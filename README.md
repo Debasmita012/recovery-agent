@@ -104,17 +104,22 @@ npm install
 ### 2. Environment Configuration
 Create a `.env` file in the root directory:
 ```env
-RAZORPAY_KEY_ID=rzp_test_YOUR_KEY
-RAZORPAY_KEY_SECRET=YOUR_SECRET
-RAZORPAY_WEBHOOK_SECRET=Ne3_ziwgWtbqLFv
+# Razorpay (test mode)
+RAZORPAY_KEY_ID=your_razorpay_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+RAZORPAY_WEBHOOK_SECRET=your_razorpay_webhook_secret
 
-ANTHROPIC_API_KEY=sk-ant-api03-YOUR_KEY
+# Anthropic API Key
+ANTHROPIC_API_KEY=your_anthropic_api_key
 ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
 
-DATABASE_URL=postgresql://user:password@ep-xxxx.neon.tech/neondb?sslmode=require
+# PostgreSQL Database URL
+DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=require
+
+# Server Config
 BASE_URL=http://127.0.0.1:3000
 PORT=3000
-ADMIN_SECRET=admin123
+ADMIN_SECRET=your_admin_secret
 ```
 
 > [!NOTE]
