@@ -7,8 +7,9 @@ let pool;
 
 if (process.env.DATABASE_URL) {
   const isLocal = process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1');
+  const connString = process.env.DATABASE_URL.replace('sslmode=require', 'sslmode=verify-full');
   pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: connString,
     ssl: isLocal ? false : { rejectUnauthorized: false }
   });
 } else {
@@ -25,13 +26,24 @@ if (process.env.DATABASE_URL) {
 }
 
 async function initSchema() {
-  const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-  await pool.query(sql);
   try {
-    await pool.query('ALTER TABLE events ADD COLUMN IF NOT EXISTS ruled_out_json TEXT;');
-    await pool.query('ALTER TABLE events ADD COLUMN IF NOT EXISTS intervention_cost INTEGER DEFAULT 0;');
-  } catch (_) {}
-  console.log('Schema ready.');
+    const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+    await pool.query(sql);
+    try {
+      await pool.query('ALTER TABLE events ADD COLUMN IF NOT EXISTS ruled_out_json TEXT;');
+      await pool.query('ALTER TABLE events ADD COLUMN IF NOT EXISTS intervention_cost INTEGER DEFAULT 0;');
+    } catch (_) {}
+    console.log('[db] Schema ready.');
+  } catch (err) {
+    console.warn(`[db] External Postgres init error (${err.message}). Falling back to in-memory pg-mem database.`);
+    const { newDb } = require('pg-mem');
+    const db = newDb();
+    const pgAdapter = db.adapters.createPg();
+    pool = new pgAdapter.Pool();
+    const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+    await pool.query(sql);
+    console.log('[db] In-memory schema ready.');
+  }
 }
 
 module.exports = { pool, initSchema };
