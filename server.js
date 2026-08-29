@@ -157,7 +157,9 @@ app.post('/query-audit', async (req, res) => {
 });
 
 function buildFallbackAnswer(query, eventsContext) {
-  const match = query.match(/cust_\d+/i);
+  const q = query.toLowerCase();
+  const match = q.match(/cust_\d+/i);
+
   if (match) {
     const targetId = match[0].toLowerCase();
     const targetEvent = eventsContext.find(e => e.customer_id.toLowerCase() === targetId) || eventsContext[0];
@@ -176,7 +178,25 @@ function buildFallbackAnswer(query, eventsContext) {
     }
   }
 
-  // Summary / General performance queries
+  // Keyword-based dynamic synthesis for general queries
+  if (q.includes('payment') || q.includes('fail') || q.includes('decline') || q.includes('card')) {
+    const reasons = eventsContext.map(e => e.reason_code).filter(Boolean);
+    const topReasons = [...new Set(reasons)].slice(0, 3).join(', ');
+    return `Payment failures analyzed across recent transactions show primary root causes: ${topReasons || 'insufficient funds and card expiration'}. Non-retryable cases are immediately safety-gated to human support.`;
+  }
+
+  if (q.includes('retry') || q.includes('attempt') || q.includes('gate') || q.includes('rule')) {
+    const retriedCount = eventsContext.filter(e => e.action_taken === 'retry_now' || e.action_taken === 'retry_in_24h').length;
+    const gatedCount = eventsContext.filter(e => e.action_taken === 'escalate_human' || e.outcome === 'stopped').length;
+    return `Retry audit breakdown: ${retriedCount} transactions were approved for retries, while ${gatedCount} transactions were blocked by safety rules to protect customer accounts.`;
+  }
+
+  if (q.includes('discount') || q.includes('nudge') || q.includes('offer')) {
+    const discountCount = eventsContext.filter(e => e.action_taken === 'send_discount_offer').length;
+    return `Discount campaigns: ${discountCount} accounts received 10% promotional retention offers to recover subscription payments.`;
+  }
+
+  // Default summary fallback
   const total = eventsContext.length;
   const recovered = eventsContext.filter(e => e.outcome === 'recovered').length;
   const stopped = eventsContext.filter(e => e.outcome === 'stopped').length;
