@@ -1,49 +1,132 @@
-# Recovery Agent
+# ✨ Shimmer — AI Payment Recovery & Gating Intelligence
 
-An AI agent that detects failed subscription/payment webhooks from Razorpay,
-classifies the root cause, decides a bounded recovery action using Claude,
-executes it, and logs every decision to an audit trail.
+An autonomous, safety-gated payment recovery agent for subscription SaaS businesses. When subscription charges fail on Razorpay, Shimmer classifies the root cause, reasons over context using **Claude 3.5 Sonnet**, validates decisions against strict safety rules, executes recovery actions, and logs full audit trails to PostgreSQL.
 
-## Local setup
+---
 
-1. `npm install`
-2. Copy `.env.example` to `.env` and fill in:
-   - Razorpay test-mode key ID, secret, and webhook secret
-   - Your Anthropic API key
-   - A Neon (or any) Postgres connection string
-3. `npm start` — this creates the schema automatically and starts the server + retry cron.
-4. In a second terminal: `ngrok http 3000`, then register the ngrok HTTPS URL + `/webhook`
-   in Razorpay Dashboard → Settings → Webhooks, subscribed to `payment.failed` and
-   `subscription.charged.failed`.
-5. Seed synthetic data: `npm run seed` (defaults to 40 records; pass a number to change it,
-   e.g. `node seed.js 60`). This posts correctly-signed fake webhook payloads straight at
-   your own `/webhook` endpoint, so you don't need to drive 40 real checkouts through
-   Razorpay's test cards.
-6. Open `http://localhost:3000/dashboard.html` to watch it process live.
+## 🌟 Standout Features & Architectural Guardrails
 
-## Deploying
+### 1. Gated AI Decision Engine ("The AI Proposes, Code Disposes")
+- **Bounded Action Menu:** The decision engine can only select from 5 fixed actions (`retry_now`, `retry_in_24h`, `send_discount_offer`, `escalate_human`, `give_up`).
+- **Server-Side Safety Override:** The code hard-enforces business rules and silently overrides invalid LLM proposals to `escalate_human` if:
+  - Max retry attempt cap (**3 attempts**) is reached.
+  - Failure reason is permanently non-retryable (`card_expired`, `invalid_card`).
+  - Discount offer exceeds maximum threshold (**10%**).
 
-1. Push this repo to GitHub.
-2. Create a Neon project (free tier), copy its connection string into `DATABASE_URL`.
-3. Create a Railway project, connect the GitHub repo, add all `.env` values as
-   Railway environment variables (set `BASE_URL` to the Railway-assigned public URL).
-4. Update the Razorpay webhook URL to point at your Railway URL + `/webhook`.
-5. Re-run `node seed.js` with `BASE_URL` pointed at the deployed URL to confirm everything
-   works end-to-end in production before demo day.
+### 2. "Why Did You NOT Retry?" Safety Gate Audit
+Most recovery tools only show why an action *was* taken. Shimmer explicitly evaluates and logs why alternative actions were **ruled out or blocked by safety rules**, categorizing each action menu item as `SELECTED`, `BLOCKED BY RULE`, or `REJECTED BY AI`.
 
-## Key endpoints
+### 3. Natural-Language Audit Assistant (`POST /query-audit`)
+Inspectors and finance teams can query the audit trail in plain English (e.g., *"Why did we give up on cust_7?"* or *"Summarize bank decline recoveries"*). Claude analyzes the actual historical audit event logs from PostgreSQL and generates concise explanations.
 
-- `POST /webhook` — Razorpay calls this on payment/subscription failure events.
-- `GET /metrics` — recovery rate, amount recovered, escalations, still-pending count.
-- `GET /customers` — list of all customers with their latest action/outcome.
-- `GET /audit/:customerId` — full decision history + LLM reasoning for one customer.
-- `POST /reset-demo` — wipes all data so you can re-run a clean demo.
+### 4. Financial Net ROI & Intervention Cost Tracking
+Tracks true net value created by deducting operational intervention costs from gross revenue recovered:
+$$\text{Net Value Created} = \text{Gross Amount Recovered} - (\text{Discount Costs} + \text{Human Escalation Support Costs})$$
 
-## Guardrails already built in
+### 5. Webhook Security & Idempotency
+- **HMAC Signature Verification:** Verifies `x-razorpay-signature` header using SHA256 HMAC before processing.
+- **Idempotency Guard:** Deduplicates events based on `razorpay_event_id` to prevent double-charging or duplicate recovery metrics.
 
-- Webhook HMAC signature verification (rejects unverified events).
-- Idempotency on `razorpay_event_id` (duplicate webhook deliveries are skipped).
-- Fixed 5-action menu the LLM must choose from — invalid output is rejected server-side.
-- Hard cap of 3 retry attempts before forced escalation.
-- Non-retryable failure reasons (expired/invalid card) can never be retried, even if the
-  model suggests it — enforced in code, not just prompted.
+---
+
+## 🔄 End-to-End Workflow Architecture
+
+```
+                                 ┌─────────────────────────┐
+                                 │ Razorpay Webhook Event  │
+                                 └────────────┬────────────┘
+                                              │
+                                              ▼
+                                ┌───────────────────────────┐
+                                │ HMAC Signature Validation │
+                                └─────────────┬─────────────┘
+                                              │
+                                              ▼
+                                ┌───────────────────────────┐
+                                │   Idempotency Check DB    │
+                                └─────────────┬─────────────┘
+                                              │
+                                              ▼
+                                ┌───────────────────────────┐
+                                │ Deterministic Classifier  │
+                                └─────────────┬─────────────┘
+                                              │
+                                              ▼
+                                ┌───────────────────────────┐
+                                │  Claude 3.5 Sonnet / LLM  │
+                                └─────────────┬─────────────┘
+                                              │
+                                              ▼
+                                ┌───────────────────────────┐
+                                │ Server-Side Safety Gating │
+                                └─────────────┬─────────────┘
+                                              │
+                                              ▼
+                                ┌───────────────────────────┐
+                                │ Action Execution & Costs  │
+                                └─────────────┬─────────────┘
+                                              │
+                                              ▼
+                                ┌───────────────────────────┐
+                                │ PostgreSQL Audit Logging  │
+                                └─────────────┬─────────────┘
+                                              │
+                                              ▼
+                                ┌───────────────────────────┐
+                                │ Live Financial Dashboard  │
+                                └───────────────────────────┘
+```
+
+---
+
+## 🔌 API Endpoints Reference
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/webhook` | Receives and verifies Razorpay `payment.failed` webhooks |
+| `GET` | `/metrics` | Returns gross recovered, total costs, net ROI, and recovery rates |
+| `GET` | `/customers` | Lists all customer accounts with latest actions and outcomes |
+| `GET` | `/audit/:id` | Returns full event history and safety gate breakdown for a customer |
+| `POST` | `/query-audit` | Natural-language AI query over historical audit logs |
+| `POST` | `/reset-demo` | Clears demo ledger (Secured via `x-admin-key` header) |
+
+---
+
+## 🚀 Quickstart Guide
+
+### 1. Installation
+```bash
+git clone https://github.com/Debasmita012/recovery-agent.git
+cd recovery-agent
+npm install
+```
+
+### 2. Environment Configuration
+Create a `.env` file in the root directory:
+```env
+RAZORPAY_KEY_ID=rzp_test_YOUR_KEY
+RAZORPAY_KEY_SECRET=YOUR_SECRET
+RAZORPAY_WEBHOOK_SECRET=Ne3_ziwgWtbqLFv
+
+ANTHROPIC_API_KEY=sk-ant-api03-YOUR_KEY
+ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+
+DATABASE_URL=postgresql://user:password@ep-xxxx.neon.tech/neondb?sslmode=require
+BASE_URL=http://127.0.0.1:3000
+PORT=3000
+ADMIN_SECRET=admin123
+```
+
+> [!NOTE]
+> **Zero-Config Fallback Mode:** If `DATABASE_URL` or `ANTHROPIC_API_KEY` are omitted, Shimmer automatically uses an **in-memory PostgreSQL engine (`pg-mem`)** and a **Deterministic Rule Engine**, allowing full offline execution out-of-the-box.
+
+### 3. Start Server & Seed Demo Data
+```bash
+# Terminal 1: Start the server and cron worker
+npm start
+
+# Terminal 2: Seed synthetic signed webhooks
+node seed.js 40
+```
+
+Open **`http://localhost:3000`** in your browser to view the live Financial Recovery Ledger dashboard.
