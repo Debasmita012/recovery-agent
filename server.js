@@ -157,11 +157,31 @@ app.post('/query-audit', async (req, res) => {
 });
 
 function buildFallbackAnswer(query, eventsContext) {
-  const first = eventsContext[0] || {};
-  if (first.action_taken === 'escalate_human' || first.outcome === 'stopped') {
-    return `Recovery attempts for ${first.customer_id || 'this account'} were stopped because the failure reason was '${first.reason_code || 'unknown'}'. Safety gate rules escalated this case to a human support agent instead of attempting invalid retries.`;
+  const match = query.match(/cust_\d+/i);
+  if (match) {
+    const targetId = match[0].toLowerCase();
+    const targetEvent = eventsContext.find(e => e.customer_id.toLowerCase() === targetId) || eventsContext[0];
+    if (targetEvent) {
+      if (targetEvent.action_taken === 'escalate_human' || targetEvent.outcome === 'stopped') {
+        return `Recovery attempts for ${targetEvent.customer_id} were stopped because the failure reason was '${targetEvent.reason_code || 'non_retryable'}'. Safety gate rules escalated this case to a human support agent to prevent invalid retry loops.`;
+      } else if (targetEvent.action_taken === 'retry_now') {
+        return `Account ${targetEvent.customer_id} encountered '${targetEvent.reason_code}'. The system executed an immediate charge retry (outcome status: ${targetEvent.outcome}).`;
+      } else if (targetEvent.action_taken === 'send_discount_offer') {
+        return `Account ${targetEvent.customer_id} experienced '${targetEvent.reason_code}'. A 10% discount recovery email was dispatched to retain the customer.`;
+      } else if (targetEvent.action_taken === 'retry_in_24h') {
+        return `Account ${targetEvent.customer_id} experienced '${targetEvent.reason_code}'. A 24-hour delayed retry attempt was scheduled by the decision engine.`;
+      } else {
+        return `Account ${targetEvent.customer_id} audit record: failure reason '${targetEvent.reason_code}'. System executed action '${targetEvent.action_taken}' with outcome status '${targetEvent.outcome}'.`;
+      }
+    }
   }
-  return `Audit summary for ${first.customer_id || 'recent accounts'}: payment failure reason '${first.reason_code || 'unknown'}'. The system initiated action '${first.action_taken}' (${first.llm_reasoning || 'rule decision'}), resulting in outcome status '${first.outcome}'.`;
+
+  // Summary / General performance queries
+  const total = eventsContext.length;
+  const recovered = eventsContext.filter(e => e.outcome === 'recovered').length;
+  const stopped = eventsContext.filter(e => e.outcome === 'stopped').length;
+  const pending = eventsContext.filter(e => e.outcome === 'pending').length;
+  return `Audit Ledger Summary (${total} events analyzed): ${recovered} accounts successfully rescued, ${stopped} stopped/escalated via safety gates, and ${pending} pending retry scheduling.`;
 }
 
 app.post('/reset-demo', async (req, res) => {
