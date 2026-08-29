@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shimmer — Autonomous Payment Recovery & Gating Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg-cream: #F8F3ED;
+    --card-light: #FFFFFF;
+    --card-border: #E8DFD5;
+    --card-dark: #2D221E;
+    --card-dark-surface: #3A2D28;
+    --text-dark: #2B211C;
+    --text-muted: #7C6C62;
+    --text-light: #F5EFE6;
+    --accent-gold: #C59B27;
+    --accent-gold-light: #F7F0DF;
+    --success-sage: #2E7D52;
+    --success-bg: #EAF5EE;
+    --stopped-rose: #A94442;
+    --stopped-bg: #FDF0ED;
+    --pending-amber: #B8860B;
+    --pending-bg: #FCF8EC;
+    --serif: 'Playfair Display', Georgia, serif;
+    --sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background-color: var(--bg-cream);
+    color: var(--text-dark);
+    line-height: 1.5;
+    padding-bottom: 60px;
+  }
+
+  .container {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 24px 20px;
+  }
+
+  /* Navigation Bar */
+  nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 28px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--card-border);
+    border-radius: 40px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 20px rgba(45, 34, 30, 0.05);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-dark);
+  }
+  .brand-sparkle {
+    width: 28px;
+    height: 28px;
+    background: var(--card-dark);
+    color: var(--accent-gold);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 24px;
+    list-style: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .nav-links a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--text-dark); }
+
+  .nav-actions { display: flex; gap: 10px; align-items: center; }
+
+  button {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 10px 20px;
+    border-radius: 30px;
+    border: 1px solid var(--card-border);
+    background: var(--card-light);
+    color: var(--text-dark);
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+  button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(45, 34, 30, 0.1);
+  }
+  .btn-primary {
+    background: var(--card-dark);
+    color: var(--text-light);
+    border: none;
+  }
+  .btn-primary:hover { background: #3E302A; }
+  .btn-danger {
+    background: var(--stopped-bg);
+    color: var(--stopped-rose);
+    border-color: rgba(169, 68, 66, 0.3);
+  }
+  .btn-danger:hover { background: #F8E2DC; }
+
+  /* Hero Banner (Inspired by Luxury Inspiration Image Top Banner) */
+  .hero-card {
+    background: linear-gradient(135deg, #2D221E 0%, #1F1714 100%);
+    border-radius: 24px;
+    padding: 44px;
+    color: var(--text-light);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 28px;
+    box-shadow: 0 16px 36px rgba(45, 34, 30, 0.2);
+  }
+  .hero-card::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(197, 155, 39, 0.18) 0%, rgba(0, 0, 0, 0) 70%);
+    pointer-events: none;
+  }
+
+  .hero-content { max-width: 620px; position: relative; z-index: 2; }
+  .hero-tag {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent-gold);
+    margin-bottom: 12px;
+    display: inline-block;
+  }
+  .hero-title {
+    font-family: var(--serif);
+    font-size: 40px;
+    font-weight: 600;
+    line-height: 1.15;
+    margin-bottom: 16px;
+    color: #FFFFFF;
+  }
+  .hero-desc {
+    font-size: 14px;
+    color: #D3C5B9;
+    margin-bottom: 28px;
+    line-height: 1.6;
+  }
+
+  /* Floating Glassmorphic Stat Pill on Hero */
+  .hero-badge-container {
+    position: absolute;
+    right: 44px;
+    bottom: 44px;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 2;
+  }
+  .hero-badge-num {
+    font-family: var(--mono);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--accent-gold);
+  }
+  .hero-badge-text { font-size: 12px; color: #E8DFD5; line-height: 1.3; }
+
+  /* Feature/Metric Cards Strip (Inspired by 4-Feature Cards in Image) */
+  .feature-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .feature-card {
+    background: var(--card-light);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 20px;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+  .feature-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(45, 34, 30, 0.08);
+  }
+  .feature-card.highlight {
+    background: linear-gradient(135deg, #2D221E 0%, #3D2F29 100%);
+    color: var(--text-light);
+    border-color: var(--accent-gold);
+  }
+
+  .feature-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-cream);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    margin-bottom: 14px;
+    color: var(--card-dark);
+  }
+  .feature-card.highlight .feature-icon {
+    background: rgba(197, 155, 39, 0.2);
+    color: var(--accent-gold);
+  }
+
+  .feature-val {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .feature-card.highlight .feature-val { color: var(--accent-gold); }
+  .feature-lbl {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+  }
+  .feature-card.highlight .feature-lbl { color: #D3C5B9; }
+  .feature-sub {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+
+  /* AI Assistant Card (Inspired by Luxury Image Middle Card Style) */
+  .ai-card {
+    background: var(--card-light);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 28px;
+    margin-bottom: 28px;
+    box-shadow: 0 8px 24px rgba(45, 34, 30, 0.04);
+  }
+
+  .ai-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .ai-title {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .ai-chips { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .ai-chip {
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--bg-cream);
+    color: var(--text-dark);
+    border: 1px solid var(--card-border);
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .ai-chip:hover {
+    background: var(--card-dark);
+    color: var(--text-light);
+    border-color: var(--card-dark);
+  }
+
+  .ai-input-wrapper { display: flex; gap: 12px; margin-bottom: 16px; }
+  .ai-input-wrapper input {
+    flex: 1;
+    font-family: var(--sans);
+    background: var(--bg-cream);
+    border: 1px solid var(--card-border);
+    border-radius: 30px;
+    padding: 12px 20px;
+    font-size: 14px;
+    color: var(--text-dark);
+  }
+  .ai-input-wrapper input:focus { outline: none; border-color: var(--accent-gold); background: #FFFFFF; }
+
+  .ai-response-box {
+    background: var(--bg-cream);
+    border-left: 4px solid var(--accent-gold);
+    border-radius: 12px;
+    padding: 16px 20px;
+    font-size: 14px;
+    color: var(--text-dark);
+    line-height: 1.6;
+    display: none;
+  }
+
+  /* Chart Container */
+  .chart-card {
+    background: var(--card-light);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 28px;
+  }
+  .section-heading {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 16px;
+  }
+
+  /* Luxury Customer Table */
+  .table-card {
+    background: var(--card-light);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: 0 8px 24px rgba(45, 34, 30, 0.04);
+  }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th {
+    text-align: left;
+    padding: 12px;
+    border-bottom: 1px solid var(--card-border);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  td {
+    padding: 16px 12px;
+    border-bottom: 1px solid #F0E8DF;
+    font-size: 14px;
+  }
+  .mono-val { font-family: var(--mono); font-weight: 600; }
+  tbody tr { transition: background 0.2s ease; cursor: pointer; }
+  tbody tr:hover { background: var(--bg-cream); }
+
+  /* Elegant Status Pills (Inspired by Pill Badges in Image) */
+  .pill-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 14px;
+    border-radius: 20px;
+    display: inline-block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .pill-recovered { background: var(--success-bg); color: var(--success-sage); border: 1px solid rgba(46, 125, 82, 0.3); }
+  .pill-stopped, .pill-escalated { background: var(--stopped-bg); color: var(--stopped-rose); border: 1px solid rgba(169, 68, 66, 0.3); }
+  .pill-pending { background: var(--pending-bg); color: var(--pending-amber); border: 1px solid rgba(184, 134, 11, 0.3); }
+
+  /* Customer Audit Panel */
+  #auditPanel {
+    background: var(--card-light);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 32px;
+    margin-top: 32px;
+    display: none;
+    box-shadow: 0 12px 32px rgba(45, 34, 30, 0.1);
+  }
+  .gating-container {
+    background: var(--card-dark);
+    color: var(--text-light);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-top: 10px;
+    font-size: 13px;
+  }
+  .status-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+  .status-tag.SELECTED { background: rgba(46, 125, 82, 0.3); color: #5CD08B; }
+  .status-tag.BLOCKED { background: rgba(169, 68, 66, 0.3); color: #FF9B99; }
+  .status-tag.REJECTED { background: rgba(197, 155, 39, 0.3); color: #F7D57F; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Navigation Header -->
+  <nav>
+    <div class="brand">
+      <div class="brand-sparkle">✨</div>
+      Shimmer
+    </div>
+    <ul class="nav-links">
+      <li><a href="#metrics">Overview</a></li>
+      <li><a href="#ai-assistant">AI Intelligence</a></li>
+      <li><a href="#ledger">Recovery Ledger</a></li>
+    </ul>
+    <div class="nav-actions">
+      <button onclick="loadAll()">↻ Refresh</button>
+      <button class="btn-danger" onclick="resetDemo()">Reset Demo</button>
+    </div>
+  </nav>
+
+  <!-- Luxury Hero Section -->
+  <div class="hero-card">
+    <div class="hero-content">
+      <span class="hero-tag">✨ SHIMMER RECOVERY ENGINE</span>
+      <h1 class="hero-title">The Art of Radiant Payment Recovery</h1>
+      <p class="hero-desc">An autonomous financial decision engine that rescues failed subscription revenue using gated Claude AI reasoning & automated safety rule evaluation.</p>
+      <button class="btn-primary" onclick="document.getElementById('customerTable').scrollIntoView({behavior:'smooth'})">Explore Ledger →</button>
+    </div>
+    <div class="hero-badge-container">
+      <div class="hero-badge-num" id="heroNetValue">₹0</div>
+      <div class="hero-badge-text">
+        <strong>Net Revenue Rescued</strong><br>
+        <span style="color: var(--accent-gold);" id="heroRate">0% Recovery Rate</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature Cards Strip -->
+  <div class="feature-strip" id="cards"></div>
+
+  <!-- Natural Language AI Audit Assistant -->
+  <div class="ai-card" id="ai-assistant">
+    <div class="ai-header">
+      <div class="ai-title">💎 Ask AI Audit Intelligence</div>
+    </div>
+    <div class="ai-chips">
+      <span class="ai-chip" onclick="askAi('Why did we give up on cust_7?')">Why did we give up on cust_7?</span>
+      <span class="ai-chip" onclick="askAi('Why was cust_1 not retried?')">Why was cust_1 not retried?</span>
+      <span class="ai-chip" onclick="askAi('Summarize recent recovery performance')">Summarize recent recovery performance</span>
+    </div>
+    <div class="ai-input-wrapper">
+      <input type="text" id="aiQueryInput" placeholder="Ask plain-English questions over audit event logs..." onkeydown="if(event.key==='Enter') runAiQuery()">
+      <button class="btn-primary" onclick="runAiQuery()">Ask Claude</button>
+    </div>
+    <div class="ai-response-box" id="aiResponse"></div>
+  </div>
+
+  <!-- Chart Visualisation -->
+  <div class="chart-card">
+    <div class="section-heading">Recovery Outcomes Breakdown</div>
+    <canvas id="chart" height="85"></canvas>
+  </div>
+
+  <!-- Recovery Ledger Table -->
+  <div class="table-card" id="ledger">
+    <div class="section-heading">Recovery Ledger Accounts</div>
+    <table id="customerTable">
+      <thead>
+        <tr>
+          <th>Customer Account</th>
+          <th>Failed Amount (INR)</th>
+          <th>Latest Action Executed</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Customer Audit Modal -->
+  <div id="auditPanel">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h2 style="font-family: var(--serif); font-size: 22px;">Audit Trail & Gating Log: <span id="auditCustomer" style="color: var(--accent-gold);"></span></h2>
+      <button onclick="document.getElementById('auditPanel').style.display='none'">Close</button>
+    </div>
+    <table id="auditTable">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Event Type</th>
+          <th>Failure Reason</th>
+          <th>Action Taken</th>
+          <th>Claude Reasoning</th>
+          <th>Outcome</th>
+          <th>Gating Breakdown</th>
+        </tr>
+      </thead>
+      <tbody id="auditBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+async function loadMetrics() {
+  const res = await fetch('/metrics');
+  const m = await res.json();
+  
+  const discountCost = m.cost_breakdown?.discount_costs_inr || 0;
+  const humanCost = m.cost_breakdown?.human_escalation_costs_inr || 0;
+
+  // Update Hero Badge
+  document.getElementById('heroNetValue').textContent = `₹${(m.net_recovered_inr || 0).toLocaleString()}`;
+  document.getElementById('heroRate').textContent = `${m.recovery_rate_pct}% Recovery Rate`;
+
+  document.getElementById('cards').innerHTML = `
+    <div class="feature-card">
+      <div class="feature-icon">👤</div>
+      <div class="feature-val">${m.total_customers}</div>
+      <div class="feature-lbl">Total Accounts</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">✨</div>
+      <div class="feature-val" style="color: var(--success-sage);">${m.recovered_count}</div>
+      <div class="feature-lbl">Rescued</div>
+      <div class="feature-sub">${m.recovery_rate_pct}% Rate</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💰</div>
+      <div class="feature-val">₹${(m.amount_recovered_inr || 0).toLocaleString()}</div>
+      <div class="feature-lbl">Gross Rescued</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🏷️</div>
+      <div class="feature-val" style="color: var(--stopped-rose);">₹${(m.total_agent_cost_inr || 0).toLocaleString()}</div>
+      <div class="feature-lbl">Agent Cost</div>
+      <div class="feature-sub">Discounts: ₹${discountCost} | Support: ₹${humanCost}</div>
+    </div>
+    <div class="feature-card highlight">
+      <div class="feature-icon">💎</div>
+      <div class="feature-val">₹${(m.net_recovered_inr || 0).toLocaleString()}</div>
+      <div class="feature-lbl">Net Value Created</div>
+      <div class="feature-sub">Gross minus Costs</div>
+    </div>
+  `;
+  drawChart(m);
+}
+
+let chartInstance;
+function drawChart(m) {
+  const ctx = document.getElementById('chart');
+  const data = {
+    labels: ['Rescued (Recovered)', 'Escalated / Stopped', 'Pending Retries'],
+    datasets: [{
+      label: 'Accounts',
+      data: [m.recovered_count, m.escalated_or_gave_up, m.still_pending],
+      backgroundColor: ['#2E7D52','#A94442','#C59B27'],
+      borderRadius: 8
+    }]
+  };
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data,
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { grid: { color: '#E8DFD5' }, ticks: { color: '#7C6C62', font: { family: 'IBM Plex Mono' } } },
+        x: { grid: { display: false }, ticks: { color: '#7C6C62', font: { family: 'Plus Jakarta Sans', weight: '600' } } }
+      }
+    }
+  });
+}
+
+async function loadCustomers() {
+  const res = await fetch('/customers');
+  const rows = await res.json();
+  const tbody = document.querySelector('#customerTable tbody');
+  tbody.innerHTML = rows.map(r => {
+    const outcome = r.latest_outcome || 'pending';
+    let badgeClass = 'pill-pending';
+    if (outcome === 'recovered') badgeClass = 'pill-recovered';
+    if (outcome === 'stopped' || outcome === 'escalated') badgeClass = 'pill-stopped';
+
+    return `
+      <tr onclick="loadAudit('${r.id}')">
+        <td class="mono-val">${r.id}</td>
+        <td class="mono-val">₹${((r.amount||0)/100).toFixed(2)}</td>
+        <td class="mono-val"><code>${r.latest_action || '-'}</code></td>
+        <td><span class="pill-badge ${badgeClass}">${outcome}</span></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function loadAudit(customerId) {
+  const res = await fetch(`/audit/${customerId}`);
+  const rows = await res.json();
+  document.getElementById('auditCustomer').textContent = customerId;
+  
+  const tbody = document.getElementById('auditBody');
+  tbody.innerHTML = rows.map((r, idx) => {
+    let ruledOutList = [];
+    try {
+      ruledOutList = typeof r.ruled_out_json === 'string' ? JSON.parse(r.ruled_out_json) : (r.ruled_out_json || []);
+    } catch (_) { ruledOutList = []; }
+
+    const gatingBoxId = `gating_${r.id || idx}`;
+    const outcome = r.outcome || 'pending';
+    let badgeClass = 'pill-pending';
+    if (outcome === 'recovered') badgeClass = 'pill-recovered';
+    if (outcome === 'stopped' || outcome === 'escalated') badgeClass = 'pill-stopped';
+
+    return `
+      <tr>
+        <td class="mono-val">${new Date(r.created_at).toLocaleTimeString()}</td>
+        <td class="mono-val">${r.event_type}</td>
+        <td class="mono-val"><code>${r.reason_code}</code></td>
+        <td class="mono-val"><strong>${r.action_taken}</strong></td>
+        <td>${r.llm_reasoning || ''}</td>
+        <td><span class="pill-badge ${badgeClass}">${outcome}</span></td>
+        <td>
+          <button onclick="event.stopPropagation(); toggleGating('${gatingBoxId}')" style="font-size: 11px; padding: 6px 12px;">
+            🔍 Why NOT Retry? (${ruledOutList.length})
+          </button>
+        </td>
+      </tr>
+      <tr id="${gatingBoxId}" style="display: none; background: #FAF5EF;">
+        <td colspan="7">
+          <div class="gating-container">
+            <strong style="color: var(--accent-gold); font-family: var(--sans);">Safety Gate Breakdown (Ruled-Out Actions Analysis):</strong>
+            <table style="margin-top: 10px;">
+              <thead>
+                <tr>
+                  <th style="color: #A39388;">Action Menu Item</th>
+                  <th style="color: #A39388;">Gating Status</th>
+                  <th style="color: #A39388;">Rule Justification</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${ruledOutList.map(item => `
+                  <tr>
+                    <td class="mono-val"><code>${item.action}</code></td>
+                    <td><span class="status-tag status-${item.status}">${item.status}</span></td>
+                    <td style="color: #E8DFD5;">${item.reason}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  
+  document.getElementById('auditPanel').style.display = 'block';
+  document.getElementById('auditPanel').scrollIntoView({ behavior: 'smooth' });
+}
+
+function toggleGating(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+}
+
+function askAi(q) {
+  document.getElementById('aiQueryInput').value = q;
+  runAiQuery();
+}
+
+async function runAiQuery() {
+  const q = document.getElementById('aiQueryInput').value.trim();
+  if (!q) return;
+
+  const respBox = document.getElementById('aiResponse');
+  respBox.style.display = 'block';
+  respBox.innerHTML = '✨ <em>Consulting Claude Audit Intelligence...</em>';
+
+  try {
+    const res = await fetch('/query-audit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: q })
+    });
+    const data = await res.json();
+    respBox.innerHTML = `<strong>Audit Response:</strong> ${data.answer}`;
+  } catch (err) {
+    respBox.innerHTML = `❌ Error querying audit assistant: ${err.message}`;
+  }
+}
+
+async function resetDemo() {
+  if (!confirm('Wipe all demo data and restart clean?')) return;
+  await fetch('/reset-demo', {
+    method: 'POST',
+    headers: { 'x-admin-key': 'admin123' }
+  });
+  document.getElementById('auditPanel').style.display = 'none';
+  await loadAll();
+}
+
+async function loadAll() {
+  await loadMetrics();
+  await loadCustomers();
+}
+
+loadAll();
+setInterval(loadAll, 6000);
+</script>
+</body>
+</html>
