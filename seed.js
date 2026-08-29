@@ -2,8 +2,9 @@ const axios = require('axios');
 const crypto = require('crypto');
 require('dotenv').config();
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
-const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || 'secret123';
+const rawUrl = process.argv[3] || process.env.BASE_URL || 'http://localhost:3000';
+const BASE_URL = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || 'Ne3_ziwgWtbqLFv';
 
 // Mix of failure reasons so your batch has a realistic spread for the metrics.
 const REASON_PROFILES = [
