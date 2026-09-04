@@ -1,23 +1,129 @@
-// Deterministic classifier - fast, no LLM call needed here.
-// Maps Razorpay's error_code / error_reason to a clean reason_code + retryable flag.
-function classifyFailure(payload) {
-  const entity = payload?.payment?.entity || {};
-  const errorCode = (entity.error_code || '').toUpperCase();
-  const errorReason = (entity.error_reason || '').toLowerCase();
+/**
+ * Deterministic payment failure classifier.
+ *
+ * Supports both:
+ *
+ * 1. Full webhook payload:
+ *    {
+ *      payment: {
+ *        entity: {
+ *          error_code,
+ *          error_reason
+ *        }
+ *      }
+ *    }
+ *
+ * 2. Inner payment payload:
+ *    {
+ *      entity: {
+ *        error_code,
+ *        error_reason
+ *      }
+ *    }
+ *
+ * 3. Direct payment entity:
+ *    {
+ *      error_code,
+ *      error_reason
+ *    }
+ *
+ * This makes the classifier tolerant to small differences
+ * in webhook-handler payload structure.
+ */
 
-  if (errorReason.includes('insufficient')) {
-    return { reason: 'insufficient_funds', retryable: true };
+function classifyFailure(input) {
+  // ---------------------------------------------------------
+  // Normalize the input to the Razorpay payment entity
+  // ---------------------------------------------------------
+
+  const entity =
+    input?.payment?.entity ||
+    input?.entity ||
+    input?.payment ||
+    input ||
+    {};
+
+
+  const errorCode =
+    String(entity.error_code || '').toUpperCase();
+
+  const errorReason =
+    String(entity.error_reason || '').toLowerCase();
+
+
+  // ---------------------------------------------------------
+  // Insufficient funds
+  // ---------------------------------------------------------
+
+  if (
+    errorReason.includes('insufficient') ||
+    errorReason.includes('insufficient funds')
+  ) {
+    return {
+      reason: 'insufficient_funds',
+      retryable: true,
+    };
   }
-  if (errorReason.includes('expired')) {
-    return { reason: 'card_expired', retryable: false };
+
+
+  // ---------------------------------------------------------
+  // Expired card
+  // ---------------------------------------------------------
+
+  if (
+    errorReason.includes('expired') ||
+    errorReason.includes('card has expired')
+  ) {
+    return {
+      reason: 'card_expired',
+      retryable: false,
+    };
   }
-  if (errorReason.includes('declined') || errorCode.includes('BAD_REQUEST_ERROR')) {
-    return { reason: 'bank_declined', retryable: true };
+
+
+  // ---------------------------------------------------------
+  // Bank decline
+  // ---------------------------------------------------------
+
+  if (
+    errorReason.includes('declined') ||
+    errorReason.includes('bank declined') ||
+    errorCode.includes('BAD_REQUEST_ERROR')
+  ) {
+    return {
+      reason: 'bank_declined',
+      retryable: true,
+    };
   }
-  if (errorReason.includes('invalid') || errorCode.includes('GATEWAY_ERROR')) {
-    return { reason: 'invalid_card', retryable: false };
+
+
+  // ---------------------------------------------------------
+  // Invalid card
+  // ---------------------------------------------------------
+
+  if (
+    errorReason.includes('invalid') ||
+    errorReason.includes('invalid card') ||
+    errorCode.includes('GATEWAY_ERROR')
+  ) {
+    return {
+      reason: 'invalid_card',
+      retryable: false,
+    };
   }
-  return { reason: 'unknown', retryable: true };
+
+
+  // ---------------------------------------------------------
+  // Unknown failure
+  // ---------------------------------------------------------
+
+  return {
+    reason: 'unknown',
+    retryable: true,
+  };
 }
 
-module.exports = { classifyFailure };
+
+module.exports = {
+  classifyFailure,
+};
