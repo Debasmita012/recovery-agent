@@ -4,726 +4,2246 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Shimmer — Autonomous Payment Recovery & Gating Intelligence</title>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+
 <style>
-  :root {
-    --bg-cream: #F8F3ED;
-    --card-light: #FFFFFF;
-    --card-border: #E8DFD5;
-    --card-dark: #2D221E;
-    --card-dark-surface: #3A2D28;
-    --text-dark: #2B211C;
-    --text-muted: #7C6C62;
-    --text-light: #F5EFE6;
-    --accent-gold: #C59B27;
-    --accent-gold-light: #F7F0DF;
-    --success-sage: #2E7D52;
-    --success-bg: #EAF5EE;
-    --stopped-rose: #A94442;
-    --stopped-bg: #FDF0ED;
-    --pending-amber: #B8860B;
-    --pending-bg: #FCF8EC;
-    --serif: 'Playfair Display', Georgia, serif;
-    --sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
-    --mono: 'IBM Plex Mono', monospace;
+:root {
+  --bg-cream:#F8F3ED;
+  --card-light:#FFFFFF;
+  --card-border:#E8DFD5;
+  --card-dark:#2D221E;
+  --card-dark-surface:#3A2D28;
+  --text-dark:#2B211C;
+  --text-muted:#7C6C62;
+  --text-light:#F5EFE6;
+  --accent-gold:#C59B27;
+  --accent-gold-light:#F7F0DF;
+  --success-sage:#2E7D52;
+  --success-bg:#EAF5EE;
+  --stopped-rose:#A94442;
+  --stopped-bg:#FDF0ED;
+  --pending-amber:#B8860B;
+  --pending-bg:#FCF8EC;
+  --serif:'Playfair Display',Georgia,serif;
+  --sans:'Plus Jakarta Sans',-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',monospace;
+}
+
+* {
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+body {
+  font-family:var(--sans);
+  background:var(--bg-cream);
+  color:var(--text-dark);
+  line-height:1.5;
+  padding-bottom:60px;
+}
+
+.container {
+  max-width:1160px;
+  margin:0 auto;
+  padding:24px 20px;
+}
+
+/* NAV */
+nav {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:16px 28px;
+  background:rgba(255,255,255,.85);
+  backdrop-filter:blur(12px);
+  border:1px solid var(--card-border);
+  border-radius:40px;
+  margin-bottom:24px;
+  box-shadow:0 4px 20px rgba(45,34,30,.05);
+}
+
+.brand {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-family:var(--serif);
+  font-size:22px;
+  font-weight:700;
+}
+
+.brand-sparkle {
+  width:28px;
+  height:28px;
+  background:var(--card-dark);
+  color:var(--accent-gold);
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:14px;
+}
+
+.nav-links {
+  display:flex;
+  gap:24px;
+  list-style:none;
+  font-size:13px;
+  font-weight:600;
+  color:var(--text-muted);
+}
+
+.nav-links a {
+  color:var(--text-muted);
+  text-decoration:none;
+}
+
+.nav-actions {
+  display:flex;
+  gap:10px;
+}
+
+button {
+  font-family:var(--sans);
+  font-weight:600;
+  font-size:13px;
+  padding:10px 20px;
+  border-radius:30px;
+  border:1px solid var(--card-border);
+  background:var(--card-light);
+  color:var(--text-dark);
+  cursor:pointer;
+  transition:.25s;
+}
+
+button:hover {
+  transform:translateY(-1px);
+  box-shadow:0 4px 12px rgba(45,34,30,.1);
+}
+
+.btn-primary {
+  background:var(--card-dark);
+  color:var(--text-light);
+  border:none;
+}
+
+.btn-danger {
+  background:var(--stopped-bg);
+  color:var(--stopped-rose);
+  border-color:rgba(169,68,66,.3);
+}
+
+/* HERO */
+.hero-card {
+  background:linear-gradient(135deg,#2D221E 0%,#1F1714 100%);
+  border-radius:24px;
+  padding:44px;
+  color:var(--text-light);
+  position:relative;
+  overflow:hidden;
+  margin-bottom:28px;
+  box-shadow:0 16px 36px rgba(45,34,30,.2);
+}
+
+.hero-card::after {
+  content:'';
+  position:absolute;
+  top:-50%;
+  right:-20%;
+  width:500px;
+  height:500px;
+  background:radial-gradient(
+    circle,
+    rgba(197,155,39,.18) 0%,
+    rgba(0,0,0,0) 70%
+  );
+  pointer-events:none;
+}
+
+.hero-content {
+  max-width:620px;
+  position:relative;
+  z-index:2;
+}
+
+.hero-tag {
+  font-size:12px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:2px;
+  color:var(--accent-gold);
+  margin-bottom:12px;
+  display:inline-block;
+}
+
+.hero-title {
+  font-family:var(--serif);
+  font-size:40px;
+  font-weight:600;
+  line-height:1.15;
+  margin-bottom:16px;
+  color:#fff;
+}
+
+.hero-desc {
+  font-size:14px;
+  color:#D3C5B9;
+  margin-bottom:28px;
+  line-height:1.6;
+}
+
+.hero-badge-container {
+  position:absolute;
+  right:44px;
+  bottom:44px;
+  background:rgba(255,255,255,.12);
+  backdrop-filter:blur(16px);
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:16px;
+  padding:16px 24px;
+  display:flex;
+  align-items:center;
+  gap:16px;
+  z-index:2;
+}
+
+.hero-badge-num {
+  font-family:var(--mono);
+  font-size:24px;
+  font-weight:700;
+  color:var(--accent-gold);
+}
+
+.hero-badge-text {
+  font-size:12px;
+  color:#E8DFD5;
+}
+
+/* KPI */
+.kpi-grid {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:16px;
+  margin-bottom:28px;
+}
+
+.kpi-card {
+  background:#fff;
+  border:1px solid var(--card-border);
+  border-radius:18px;
+  padding:22px;
+}
+
+.kpi-card.primary {
+  background:linear-gradient(135deg,#2D221E,#40302A);
+  color:#fff;
+  border-color:var(--accent-gold);
+}
+
+.kpi-label {
+  font-size:10px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:1.2px;
+  color:var(--text-muted);
+}
+
+.kpi-card.primary .kpi-label {
+  color:#D3C5B9;
+}
+
+.kpi-value {
+  font-family:var(--mono);
+  font-size:30px;
+  font-weight:700;
+  margin-top:8px;
+}
+
+.kpi-card.primary .kpi-value {
+  color:var(--accent-gold);
+}
+
+.kpi-meta {
+  font-size:11px;
+  color:var(--text-muted);
+  margin-top:6px;
+}
+
+.kpi-card.primary .kpi-meta {
+  color:#D3C5B9;
+}
+
+/* GRID */
+.dashboard-grid {
+  display:grid;
+  grid-template-columns:1.15fr .85fr;
+  gap:20px;
+  margin-bottom:28px;
+}
+
+.mini-card,
+.chart-card,
+.ai-card,
+.table-card,
+#auditPanel {
+  background:#fff;
+  border:1px solid var(--card-border);
+  border-radius:20px;
+}
+
+.mini-card {
+  padding:24px;
+}
+
+.mini-title,
+.section-heading {
+  font-family:var(--serif);
+  font-size:22px;
+  font-weight:600;
+}
+
+.mini-subtitle {
+  font-size:12px;
+  color:var(--text-muted);
+  margin-bottom:18px;
+}
+
+/* FUNNEL */
+.funnel-row {
+  margin:14px 0;
+}
+
+.funnel-head {
+  display:flex;
+  justify-content:space-between;
+  font-size:12px;
+  font-weight:700;
+  margin-bottom:7px;
+}
+
+.funnel-track {
+  height:12px;
+  background:#F0E8DF;
+  border-radius:20px;
+  overflow:hidden;
+}
+
+.funnel-fill {
+  height:100%;
+  border-radius:20px;
+}
+
+.funnel-total {
+  margin-top:18px;
+  padding-top:16px;
+  border-top:1px solid var(--card-border);
+  display:flex;
+  justify-content:space-between;
+  font-family:var(--mono);
+  font-size:13px;
+}
+
+/* FAILURE INTELLIGENCE */
+.reason-list {
+  display:grid;
+  gap:12px;
+}
+
+.reason-item {
+  display:grid;
+  grid-template-columns:135px 1fr 45px;
+  gap:10px;
+  align-items:center;
+  font-size:11px;
+}
+
+.reason-name {
+  font-weight:600;
+  text-transform:capitalize;
+}
+
+.reason-track {
+  height:9px;
+  background:#F0E8DF;
+  border-radius:20px;
+  overflow:hidden;
+}
+
+.reason-fill {
+  height:100%;
+  background:var(--accent-gold);
+  border-radius:20px;
+}
+
+.reason-count {
+  font-family:var(--mono);
+  text-align:right;
+  font-weight:700;
+}
+
+/* DECISIONS */
+.decision-grid {
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:10px;
+  margin-top:16px;
+}
+
+.decision-box {
+  border:1px solid var(--card-border);
+  border-radius:12px;
+  padding:13px;
+  text-align:center;
+  background:var(--bg-cream);
+}
+
+.decision-num {
+  font-family:var(--mono);
+  font-size:21px;
+  font-weight:700;
+}
+
+.decision-label {
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.7px;
+  color:var(--text-muted);
+  margin-top:4px;
+}
+
+/* AI */
+.ai-card {
+  padding:28px;
+  margin-bottom:28px;
+}
+
+.ai-header {
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:16px;
+}
+
+.ai-title {
+  font-family:var(--serif);
+  font-size:22px;
+  font-weight:600;
+}
+
+.ai-chips {
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:16px;
+}
+
+.ai-chip {
+  font-size:12px;
+  background:var(--bg-cream);
+  color:var(--text-dark);
+  border:1px solid var(--card-border);
+  padding:6px 14px;
+  border-radius:20px;
+  cursor:pointer;
+}
+
+.ai-input-wrapper {
+  display:flex;
+  gap:12px;
+  margin-bottom:16px;
+}
+
+.ai-input-wrapper input {
+  flex:1;
+  font-family:var(--sans);
+  background:var(--bg-cream);
+  border:1px solid var(--card-border);
+  border-radius:30px;
+  padding:12px 20px;
+  font-size:14px;
+}
+
+.ai-response-box {
+  background:var(--bg-cream);
+  border-left:4px solid var(--accent-gold);
+  border-radius:12px;
+  padding:16px 20px;
+  font-size:14px;
+  line-height:1.6;
+  display:none;
+}
+
+/* CHART */
+.chart-card {
+  padding:24px;
+  margin-bottom:28px;
+}
+
+/* LIVE FEED */
+.live-feed {
+  display:grid;
+  gap:10px;
+  max-height:235px;
+  overflow:auto;
+}
+
+.feed-item {
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  padding:10px 0;
+  border-bottom:1px solid #F0E8DF;
+  font-size:12px;
+}
+
+.feed-dot {
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  margin-top:5px;
+  background:var(--success-sage);
+  flex:0 0 auto;
+}
+
+.feed-dot.stop {
+  background:var(--stopped-rose);
+}
+
+.feed-main {
+  flex:1;
+}
+
+.feed-time {
+  color:var(--text-muted);
+  font-size:10px;
+}
+
+/* TABLE */
+.table-card {
+  padding:28px;
+}
+
+table {
+  width:100%;
+  border-collapse:collapse;
+  margin-top:12px;
+}
+
+th {
+  text-align:left;
+  padding:12px;
+  border-bottom:1px solid var(--card-border);
+  font-size:11px;
+  font-weight:700;
+  color:var(--text-muted);
+  text-transform:uppercase;
+  letter-spacing:1px;
+}
+
+td {
+  padding:16px 12px;
+  border-bottom:1px solid #F0E8DF;
+  font-size:14px;
+}
+
+tbody tr {
+  transition:.2s;
+  cursor:pointer;
+}
+
+tbody tr:hover {
+  background:var(--bg-cream);
+}
+
+.mono-val {
+  font-family:var(--mono);
+  font-weight:600;
+}
+
+/* STATUS */
+.pill-badge {
+  font-size:12px;
+  font-weight:700;
+  padding:4px 14px;
+  border-radius:20px;
+  display:inline-block;
+  text-transform:uppercase;
+}
+
+.pill-recovered {
+  background:var(--success-bg);
+  color:var(--success-sage);
+  border:1px solid rgba(46,125,82,.3);
+}
+
+.pill-stopped {
+  background:var(--stopped-bg);
+  color:var(--stopped-rose);
+  border:1px solid rgba(169,68,66,.3);
+}
+
+.pill-pending {
+  background:var(--pending-bg);
+  color:var(--pending-amber);
+  border:1px solid rgba(184,134,11,.3);
+}
+
+/* AUDIT */
+#auditPanel {
+  padding:32px;
+  margin-top:32px;
+  display:none;
+  box-shadow:0 12px 32px rgba(45,34,30,.1);
+}
+
+.audit-highlight {
+  background:linear-gradient(135deg,#2D221E,#3A2D28);
+  color:#fff;
+  border-radius:16px;
+  padding:18px;
+  margin-bottom:18px;
+}
+
+.audit-highlight-title {
+  color:var(--accent-gold);
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:1px;
+}
+
+.audit-highlight-text {
+  margin-top:7px;
+  font-size:13px;
+  line-height:1.6;
+  color:#F5EFE6;
+}
+
+.gating-container {
+  background:var(--card-dark);
+  color:var(--text-light);
+  border-radius:14px;
+  padding:16px 20px;
+  margin-top:10px;
+  font-size:13px;
+}
+
+.status-tag {
+  font-family:var(--mono);
+  font-size:10px;
+  font-weight:700;
+  padding:2px 8px;
+  border-radius:4px;
+  text-transform:uppercase;
+}
+
+.status-tag.SELECTED {
+  background:rgba(46,125,82,.3);
+  color:#5CD08B;
+}
+
+.status-tag.BLOCKED {
+  background:rgba(169,68,66,.3);
+  color:#FF9B99;
+}
+
+.status-tag.REJECTED {
+  background:rgba(197,155,39,.3);
+  color:#F7D57F;
+}
+
+/* SEARCH */
+.search-box {
+  width:100%;
+  margin-top:14px;
+  padding:11px 15px;
+  border:1px solid var(--card-border);
+  border-radius:12px;
+  background:var(--bg-cream);
+  font-family:var(--sans);
+}
+
+.search-box:focus {
+  outline:none;
+  border-color:var(--accent-gold);
+  background:#fff;
+}
+
+.status-dot {
+  display:inline-block;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--success-sage);
+  margin-right:7px;
+}
+
+@media(max-width:900px) {
+  .kpi-grid,
+  .dashboard-grid {
+    grid-template-columns:1fr 1fr;
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: var(--sans);
-    background-color: var(--bg-cream);
-    color: var(--text-dark);
-    line-height: 1.5;
-    padding-bottom: 60px;
+  .decision-grid {
+    grid-template-columns:repeat(3,1fr);
   }
+}
 
-  .container {
-    max-width: 1160px;
-    margin: 0 auto;
-    padding: 24px 20px;
+@media(max-width:600px) {
+  .kpi-grid,
+  .dashboard-grid {
+    grid-template-columns:1fr;
   }
 
-  /* Navigation Bar */
-  nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 28px;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--card-border);
-    border-radius: 40px;
-    margin-bottom: 24px;
-    box-shadow: 0 4px 20px rgba(45, 34, 30, 0.05);
+  .decision-grid {
+    grid-template-columns:1fr 1fr;
   }
 
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-family: var(--serif);
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text-dark);
-  }
-  .brand-sparkle {
-    width: 28px;
-    height: 28px;
-    background: var(--card-dark);
-    color: var(--accent-gold);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-  }
-
-  .nav-links {
-    display: flex;
-    gap: 24px;
-    list-style: none;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-muted);
-  }
-  .nav-links a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
-  .nav-links a:hover { color: var(--text-dark); }
-
-  .nav-actions { display: flex; gap: 10px; align-items: center; }
-
-  button {
-    font-family: var(--sans);
-    font-weight: 600;
-    font-size: 13px;
-    padding: 10px 20px;
-    border-radius: 30px;
-    border: 1px solid var(--card-border);
-    background: var(--card-light);
-    color: var(--text-dark);
-    cursor: pointer;
-    transition: all 0.25s ease;
-  }
-  button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(45, 34, 30, 0.1);
-  }
-  .btn-primary {
-    background: var(--card-dark);
-    color: var(--text-light);
-    border: none;
-  }
-  .btn-primary:hover { background: #3E302A; }
-  .btn-danger {
-    background: var(--stopped-bg);
-    color: var(--stopped-rose);
-    border-color: rgba(169, 68, 66, 0.3);
-  }
-  .btn-danger:hover { background: #F8E2DC; }
-
-  /* Hero Banner (Inspired by Luxury Inspiration Image Top Banner) */
   .hero-card {
-    background: linear-gradient(135deg, #2D221E 0%, #1F1714 100%);
-    border-radius: 24px;
-    padding: 44px;
-    color: var(--text-light);
-    position: relative;
-    overflow: hidden;
-    margin-bottom: 28px;
-    box-shadow: 0 16px 36px rgba(45, 34, 30, 0.2);
-  }
-  .hero-card::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(197, 155, 39, 0.18) 0%, rgba(0, 0, 0, 0) 70%);
-    pointer-events: none;
+    padding:30px 24px 120px;
   }
 
-  .hero-content { max-width: 620px; position: relative; z-index: 2; }
-  .hero-tag {
-    font-family: var(--sans);
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    color: var(--accent-gold);
-    margin-bottom: 12px;
-    display: inline-block;
-  }
-  .hero-title {
-    font-family: var(--serif);
-    font-size: 40px;
-    font-weight: 600;
-    line-height: 1.15;
-    margin-bottom: 16px;
-    color: #FFFFFF;
-  }
-  .hero-desc {
-    font-size: 14px;
-    color: #D3C5B9;
-    margin-bottom: 28px;
-    line-height: 1.6;
-  }
-
-  /* Floating Glassmorphic Stat Pill on Hero */
   .hero-badge-container {
-    position: absolute;
-    right: 44px;
-    bottom: 44px;
-    background: rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    z-index: 2;
+    left:24px;
+    right:24px;
+    bottom:24px;
   }
-  .hero-badge-num {
-    font-family: var(--mono);
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--accent-gold);
-  }
-  .hero-badge-text { font-size: 12px; color: #E8DFD5; line-height: 1.3; }
-
-  /* Feature/Metric Cards Strip (Inspired by 4-Feature Cards in Image) */
-  .feature-strip {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-    margin-bottom: 28px;
-  }
-
-  .feature-card {
-    background: var(--card-light);
-    border: 1px solid var(--card-border);
-    border-radius: 16px;
-    padding: 20px;
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
-  }
-  .feature-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 24px rgba(45, 34, 30, 0.08);
-  }
-  .feature-card.highlight {
-    background: linear-gradient(135deg, #2D221E 0%, #3D2F29 100%);
-    color: var(--text-light);
-    border-color: var(--accent-gold);
-  }
-
-  .feature-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--bg-cream);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    margin-bottom: 14px;
-    color: var(--card-dark);
-  }
-  .feature-card.highlight .feature-icon {
-    background: rgba(197, 155, 39, 0.2);
-    color: var(--accent-gold);
-  }
-
-  .feature-val {
-    font-family: var(--mono);
-    font-size: 26px;
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
-  .feature-card.highlight .feature-val { color: var(--accent-gold); }
-  .feature-lbl {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--text-muted);
-  }
-  .feature-card.highlight .feature-lbl { color: #D3C5B9; }
-  .feature-sub {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-top: 6px;
-  }
-
-  /* AI Assistant Card (Inspired by Luxury Image Middle Card Style) */
-  .ai-card {
-    background: var(--card-light);
-    border: 1px solid var(--card-border);
-    border-radius: 20px;
-    padding: 28px;
-    margin-bottom: 28px;
-    box-shadow: 0 8px 24px rgba(45, 34, 30, 0.04);
-  }
-
-  .ai-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-  }
-  .ai-title {
-    font-family: var(--serif);
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--text-dark);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .ai-chips { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
-  .ai-chip {
-    font-size: 12px;
-    font-weight: 500;
-    background: var(--bg-cream);
-    color: var(--text-dark);
-    border: 1px solid var(--card-border);
-    padding: 6px 14px;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  .ai-chip:hover {
-    background: var(--card-dark);
-    color: var(--text-light);
-    border-color: var(--card-dark);
-  }
-
-  .ai-input-wrapper { display: flex; gap: 12px; margin-bottom: 16px; }
-  .ai-input-wrapper input {
-    flex: 1;
-    font-family: var(--sans);
-    background: var(--bg-cream);
-    border: 1px solid var(--card-border);
-    border-radius: 30px;
-    padding: 12px 20px;
-    font-size: 14px;
-    color: var(--text-dark);
-  }
-  .ai-input-wrapper input:focus { outline: none; border-color: var(--accent-gold); background: #FFFFFF; }
-
-  .ai-response-box {
-    background: var(--bg-cream);
-    border-left: 4px solid var(--accent-gold);
-    border-radius: 12px;
-    padding: 16px 20px;
-    font-size: 14px;
-    color: var(--text-dark);
-    line-height: 1.6;
-    display: none;
-  }
-
-  /* Chart Container */
-  .chart-card {
-    background: var(--card-light);
-    border: 1px solid var(--card-border);
-    border-radius: 20px;
-    padding: 24px;
-    margin-bottom: 28px;
-  }
-  .section-heading {
-    font-family: var(--serif);
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--text-dark);
-    margin-bottom: 16px;
-  }
-
-  /* Luxury Customer Table */
-  .table-card {
-    background: var(--card-light);
-    border: 1px solid var(--card-border);
-    border-radius: 20px;
-    padding: 28px;
-    box-shadow: 0 8px 24px rgba(45, 34, 30, 0.04);
-  }
-
-  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-  th {
-    text-align: left;
-    padding: 12px;
-    border-bottom: 1px solid var(--card-border);
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-  td {
-    padding: 16px 12px;
-    border-bottom: 1px solid #F0E8DF;
-    font-size: 14px;
-  }
-  .mono-val { font-family: var(--mono); font-weight: 600; }
-  tbody tr { transition: background 0.2s ease; cursor: pointer; }
-  tbody tr:hover { background: var(--bg-cream); }
-
-  /* Elegant Status Pills (Inspired by Pill Badges in Image) */
-  .pill-badge {
-    font-size: 12px;
-    font-weight: 700;
-    padding: 4px 14px;
-    border-radius: 20px;
-    display: inline-block;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  .pill-recovered { background: var(--success-bg); color: var(--success-sage); border: 1px solid rgba(46, 125, 82, 0.3); }
-  .pill-stopped, .pill-escalated { background: var(--stopped-bg); color: var(--stopped-rose); border: 1px solid rgba(169, 68, 66, 0.3); }
-  .pill-pending { background: var(--pending-bg); color: var(--pending-amber); border: 1px solid rgba(184, 134, 11, 0.3); }
-
-  /* Customer Audit Panel */
-  #auditPanel {
-    background: var(--card-light);
-    border: 1px solid var(--card-border);
-    border-radius: 20px;
-    padding: 32px;
-    margin-top: 32px;
-    display: none;
-    box-shadow: 0 12px 32px rgba(45, 34, 30, 0.1);
-  }
-  .gating-container {
-    background: var(--card-dark);
-    color: var(--text-light);
-    border-radius: 14px;
-    padding: 16px 20px;
-    margin-top: 10px;
-    font-size: 13px;
-  }
-  .status-tag {
-    font-family: var(--mono);
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 4px;
-    text-transform: uppercase;
-  }
-  .status-tag.SELECTED { background: rgba(46, 125, 82, 0.3); color: #5CD08B; }
-  .status-tag.BLOCKED { background: rgba(169, 68, 66, 0.3); color: #FF9B99; }
-  .status-tag.REJECTED { background: rgba(197, 155, 39, 0.3); color: #F7D57F; }
+}
 </style>
 </head>
+
 <body>
 
 <div class="container">
-  <!-- Navigation Header -->
-  <nav>
-    <div class="brand">
-      <div class="brand-sparkle">✨</div>
-      Shimmer
-    </div>
-    <ul class="nav-links">
-      <li><a href="#metrics">Overview</a></li>
-      <li><a href="#ai-assistant">AI Intelligence</a></li>
-      <li><a href="#ledger">Recovery Ledger</a></li>
-    </ul>
-    <div class="nav-actions">
-      <button onclick="loadAll()">↻ Refresh</button>
-      <button class="btn-danger" onclick="resetDemo()">Reset Demo</button>
-    </div>
-  </nav>
 
-  <!-- Luxury Hero Section -->
-  <div class="hero-card">
-    <div class="hero-content">
-      <span class="hero-tag">✨ SHIMMER RECOVERY ENGINE</span>
-      <h1 class="hero-title">The Art of Radiant Payment Recovery</h1>
-      <p class="hero-desc">An autonomous financial decision engine that rescues failed subscription revenue using gated Claude AI reasoning & automated safety rule evaluation.</p>
-      <button class="btn-primary" onclick="document.getElementById('customerTable').scrollIntoView({behavior:'smooth'})">Explore Ledger →</button>
-    </div>
-    <div class="hero-badge-container">
-      <div class="hero-badge-num" id="heroNetValue">₹0</div>
-      <div class="hero-badge-text">
-        <strong>Net Revenue Rescued</strong><br>
-        <span style="color: var(--accent-gold);" id="heroRate">0% Recovery Rate</span>
-      </div>
-    </div>
+<nav>
+  <div class="brand">
+    <div class="brand-sparkle">✨</div>
+    Shimmer
   </div>
 
-  <!-- Feature Cards Strip -->
-  <div class="feature-strip" id="cards"></div>
+  <ul class="nav-links">
+    <li><a href="#metrics">Overview</a></li>
+    <li><a href="#ai-assistant">AI Intelligence</a></li>
+    <li><a href="#ledger">Recovery Ledger</a></li>
+  </ul>
 
-  <!-- Natural Language AI Audit Assistant -->
-  <div class="ai-card" id="ai-assistant">
-    <div class="ai-header">
-      <div class="ai-title">💎 Ask AI Audit Intelligence</div>
-    </div>
-    <div class="ai-chips">
-      <span class="ai-chip" onclick="askAi('Why did we give up on cust_7?')">Why did we give up on cust_7?</span>
-      <span class="ai-chip" onclick="askAi('Why was cust_1 not retried?')">Why was cust_1 not retried?</span>
-      <span class="ai-chip" onclick="askAi('Summarize recent recovery performance')">Summarize recent recovery performance</span>
-    </div>
-    <div class="ai-input-wrapper">
-      <input type="text" id="aiQueryInput" placeholder="Ask plain-English questions over audit event logs..." onkeydown="if(event.key==='Enter') runAiQuery()">
-      <button class="btn-primary" onclick="runAiQuery()">Ask Claude</button>
-    </div>
-    <div class="ai-response-box" id="aiResponse"></div>
+  <div class="nav-actions">
+    <button onclick="loadAll()">↻ Refresh</button>
+    <button class="btn-danger" onclick="resetDemo()">Reset Demo</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero-card">
+
+  <div class="hero-content">
+
+    <span class="hero-tag">
+      ✨ SHIMMER RECOVERY ENGINE
+    </span>
+
+    <h1 class="hero-title">
+      Autonomous Payment Recovery Intelligence
+    </h1>
+
+    <p class="hero-desc">
+      An autonomous financial decision engine that rescues failed subscription revenue using AI reasoning, deterministic safety gates, automated retry workflows and explainable audit trails.
+    </p>
+
+    <button
+      class="btn-primary"
+      onclick="document.getElementById('ledger').scrollIntoView({behavior:'smooth'})">
+      Explore Recovery Ledger →
+    </button>
+
   </div>
 
-  <!-- Chart Visualisation -->
-  <div class="chart-card">
-    <div class="section-heading">Recovery Outcomes Breakdown</div>
-    <canvas id="chart" height="85"></canvas>
-  </div>
+  <div class="hero-badge-container">
 
-  <!-- Recovery Ledger Table -->
-  <div class="table-card" id="ledger">
-    <div class="section-heading">Recovery Ledger Accounts</div>
-    <table id="customerTable">
-      <thead>
-        <tr>
-          <th>Customer Account</th>
-          <th>Failed Amount (INR)</th>
-          <th>Latest Action Executed</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-
-  <!-- Customer Audit Modal -->
-  <div id="auditPanel">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <h2 style="font-family: var(--serif); font-size: 22px;">Audit Trail & Gating Log: <span id="auditCustomer" style="color: var(--accent-gold);"></span></h2>
-      <button onclick="document.getElementById('auditPanel').style.display='none'">Close</button>
+    <div class="hero-badge-num" id="heroNetValue">
+      ₹0
     </div>
-    <table id="auditTable">
-      <thead>
-        <tr>
-          <th>Time</th>
-          <th>Event Type</th>
-          <th>Failure Reason</th>
-          <th>Action Taken</th>
-          <th>Claude Reasoning</th>
-          <th>Outcome</th>
-          <th>Gating Breakdown</th>
-        </tr>
-      </thead>
-      <tbody id="auditBody"></tbody>
-    </table>
+
+    <div class="hero-badge-text">
+      <strong>Net Revenue Rescued</strong><br>
+      <span style="color:var(--accent-gold)" id="heroRate">
+        0% Customer Recovery
+      </span>
+    </div>
+
   </div>
+
+</div>
+
+<!-- EXECUTIVE KPIs -->
+<div class="kpi-grid" id="kpis"></div>
+
+<!-- RECOVERY INTELLIGENCE -->
+<div class="dashboard-grid">
+
+  <div class="mini-card">
+
+    <div class="mini-title">
+      Revenue Recovery Funnel
+    </div>
+
+    <div class="mini-subtitle">
+      From failed subscription payments to recovered revenue
+    </div>
+
+    <div id="funnel"></div>
+
+  </div>
+
+  <div class="mini-card">
+
+    <div class="mini-title">
+      Failure Intelligence
+    </div>
+
+    <div class="mini-subtitle">
+      What caused the failed payments?
+    </div>
+
+    <div class="reason-list" id="reasonList"></div>
+
+  </div>
+
+</div>
+
+<!-- DECISION DISTRIBUTION -->
+<div class="chart-card">
+
+  <div class="section-heading">
+    Agent Decision Distribution
+  </div>
+
+  <div class="decision-grid" id="decisionGrid"></div>
+
+</div>
+
+<!-- CHART -->
+<div class="chart-card">
+
+  <div class="section-heading">
+    Recovery Outcomes Breakdown
+  </div>
+
+  <canvas id="chart" height="85"></canvas>
+
+</div>
+
+<!-- LIVE ACTIVITY + ECONOMICS -->
+<div class="dashboard-grid">
+
+  <div class="mini-card">
+
+    <div class="mini-title">
+      <span class="status-dot"></span>
+      Live Recovery Activity
+    </div>
+
+    <div class="mini-subtitle">
+      Latest customer outcomes from the recovery engine
+    </div>
+
+    <div class="live-feed" id="liveFeed"></div>
+
+  </div>
+
+  <div class="mini-card">
+
+    <div class="mini-title">
+      Recovery Economics
+    </div>
+
+    <div class="mini-subtitle">
+      Measure value created after intervention costs
+    </div>
+
+    <div id="economics"></div>
+
+  </div>
+
+</div>
+
+<!-- AI AUDIT -->
+<div class="ai-card" id="ai-assistant">
+
+  <div class="ai-header">
+
+    <div class="ai-title">
+      💎 Ask AI Audit Intelligence
+    </div>
+
+  </div>
+
+  <div class="ai-chips">
+
+    <span
+      class="ai-chip"
+      onclick="askAi('Why did we give up on cust_7?')">
+      Why did we give up on cust_7?
+    </span>
+
+    <span
+      class="ai-chip"
+      onclick="askAi('Why was cust_1 not retried?')">
+      Why was cust_1 not retried?
+    </span>
+
+    <span
+      class="ai-chip"
+      onclick="askAi('Summarize recent recovery performance')">
+      Summarize recent recovery performance
+    </span>
+
+  </div>
+
+  <div class="ai-input-wrapper">
+
+    <input
+      type="text"
+      id="aiQueryInput"
+      placeholder="Ask plain-English questions over audit event logs..."
+      onkeydown="if(event.key==='Enter') runAiQuery()">
+
+    <button
+      class="btn-primary"
+      onclick="runAiQuery()">
+      Ask Claude
+    </button>
+
+  </div>
+
+  <div
+    class="ai-response-box"
+    id="aiResponse">
+  </div>
+
+</div>
+
+<!-- RECOVERY LEDGER -->
+<div class="table-card" id="ledger">
+
+  <div class="section-heading">
+    Recovery Ledger Accounts
+  </div>
+
+  <input
+    class="search-box"
+    id="customerSearch"
+    placeholder="Search customer ID, email, action or status..."
+    oninput="renderCustomers()">
+
+  <table id="customerTable">
+
+    <thead>
+      <tr>
+        <th>Customer Account</th>
+        <th>Failed Amount</th>
+        <th>Latest Action</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+
+    <tbody></tbody>
+
+  </table>
+
+</div>
+
+<!-- AUDIT PANEL -->
+<div id="auditPanel">
+
+  <div style="
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+  ">
+
+    <h2 style="
+      font-family:var(--serif);
+      font-size:22px;
+    ">
+      Audit Trail & Gating Log:
+      <span
+        id="auditCustomer"
+        style="color:var(--accent-gold)">
+      </span>
+    </h2>
+
+    <button
+      onclick="document.getElementById('auditPanel').style.display='none'">
+      Close
+    </button>
+
+  </div>
+
+  <div
+    id="auditHighlight"
+    class="audit-highlight">
+  </div>
+
+  <table id="auditTable">
+
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Event Type</th>
+        <th>Failure Reason</th>
+        <th>Action</th>
+        <th>AI Reasoning</th>
+        <th>Outcome</th>
+        <th>Safety Gate</th>
+      </tr>
+    </thead>
+
+    <tbody id="auditBody"></tbody>
+
+  </table>
+
+</div>
+
 </div>
 
 <script>
+
+let chartInstance;
+let customers = [];
+let latestMetrics = null;
+
+const money = n =>
+  `₹${Number(n || 0).toLocaleString('en-IN')}`;
+
+const paiseToInr = n =>
+  Number(n || 0) / 100;
+
+const pretty = s =>
+  String(s || '-').replaceAll('_',' ');
+
+
+/* =========================
+   METRICS
+========================= */
+
 async function loadMetrics() {
+
   const res = await fetch('/metrics');
+
+  if (!res.ok)
+    throw new Error('Unable to load metrics');
+
   const m = await res.json();
-  
-  const discountCost = m.cost_breakdown?.discount_costs_inr || 0;
-  const humanCost = m.cost_breakdown?.human_escalation_costs_inr || 0;
 
-  // Update Hero Badge
-  document.getElementById('heroNetValue').textContent = `₹${(m.net_recovered_inr || 0).toLocaleString()}`;
-  document.getElementById('heroRate').textContent = `${m.recovery_rate_pct}% Recovery Rate`;
+  latestMetrics = m;
 
-  document.getElementById('cards').innerHTML = `
-    <div class="feature-card">
-      <div class="feature-icon">👤</div>
-      <div class="feature-val">${m.total_customers}</div>
-      <div class="feature-lbl">Total Accounts</div>
+  const totalAtRisk =
+    Number(m.revenue_at_risk_inr || 0);
+
+  const recoveredRevenue =
+    Number(m.amount_recovered_inr || 0);
+
+  const revenueRecoveryRate =
+    Number.isFinite(Number(m.revenue_recovery_rate_pct))
+      ? Number(m.revenue_recovery_rate_pct)
+      : (totalAtRisk
+          ? (recoveredRevenue / totalAtRisk) * 100
+          : 0);
+
+  const agentCost =
+    Number(m.total_agent_cost_inr || 0);
+
+  const roi =
+    agentCost > 0
+      ? recoveredRevenue / agentCost
+      : 0;
+
+
+  /* HERO */
+
+  document.getElementById('heroNetValue')
+    .textContent =
+    money(m.net_recovered_inr);
+
+  document.getElementById('heroRate')
+    .textContent =
+    `${Number(m.recovery_rate_pct || 0).toFixed(0)}% Customer Recovery`;
+
+
+  /* KPI CARDS */
+
+  document.getElementById('kpis').innerHTML = `
+
+    <div class="kpi-card">
+
+      <div class="kpi-label">
+        Revenue at Risk
+      </div>
+
+      <div class="kpi-value">
+        ${money(totalAtRisk)}
+      </div>
+
+      <div class="kpi-meta">
+        ${m.total_customers || 0}
+        failed payment accounts
+      </div>
+
     </div>
-    <div class="feature-card">
-      <div class="feature-icon">✨</div>
-      <div class="feature-val" style="color: var(--success-sage);">${m.recovered_count}</div>
-      <div class="feature-lbl">Rescued</div>
-      <div class="feature-sub">${m.recovery_rate_pct}% Rate</div>
+
+
+    <div class="kpi-card primary">
+
+      <div class="kpi-label">
+        Revenue Recovered
+      </div>
+
+      <div class="kpi-value">
+        ${money(recoveredRevenue)}
+      </div>
+
+      <div class="kpi-meta">
+        ${revenueRecoveryRate.toFixed(1)}%
+        of revenue at risk
+      </div>
+
     </div>
-    <div class="feature-card">
-      <div class="feature-icon">💰</div>
-      <div class="feature-val">₹${(m.amount_recovered_inr || 0).toLocaleString()}</div>
-      <div class="feature-lbl">Gross Rescued</div>
+
+
+    <div class="kpi-card">
+
+      <div class="kpi-label">
+        Recovery Rate
+      </div>
+
+      <div class="kpi-value">
+        ${Number(m.recovery_rate_pct || 0).toFixed(0)}%
+      </div>
+
+      <div class="kpi-meta">
+        ${m.recovered_count || 0}
+        of ${m.total_customers || 0}
+        accounts rescued
+      </div>
+
     </div>
-    <div class="feature-card">
-      <div class="feature-icon">🏷️</div>
-      <div class="feature-val" style="color: var(--stopped-rose);">₹${(m.total_agent_cost_inr || 0).toLocaleString()}</div>
-      <div class="feature-lbl">Agent Cost</div>
-      <div class="feature-sub">Discounts: ₹${discountCost} | Support: ₹${humanCost}</div>
+
+
+    <div class="kpi-card">
+
+      <div class="kpi-label">
+        Net Value Created
+      </div>
+
+      <div class="kpi-value">
+        ${money(m.net_recovered_inr)}
+      </div>
+
+      <div class="kpi-meta">
+        After ${money(m.total_agent_cost_inr)}
+        intervention cost
+      </div>
+
     </div>
-    <div class="feature-card highlight">
-      <div class="feature-icon">💎</div>
-      <div class="feature-val">₹${(m.net_recovered_inr || 0).toLocaleString()}</div>
-      <div class="feature-lbl">Net Value Created</div>
-      <div class="feature-sub">Gross minus Costs</div>
-    </div>
+
   `;
+
+
+  /* FUNNEL */
+
+  const unrecovered =
+    Math.max(
+      0,
+      totalAtRisk - recoveredRevenue
+    );
+
+  document.getElementById('funnel').innerHTML = `
+
+    <div class="funnel-row">
+
+      <div class="funnel-head">
+        <span>Total Revenue at Risk</span>
+        <span>${money(totalAtRisk)}</span>
+      </div>
+
+      <div class="funnel-track">
+        <div
+          class="funnel-fill"
+          style="
+            width:100%;
+            background:var(--card-dark)
+          ">
+        </div>
+      </div>
+
+    </div>
+
+
+    <div class="funnel-row">
+
+      <div class="funnel-head">
+        <span>Revenue Recovered</span>
+        <span>${money(recoveredRevenue)}</span>
+      </div>
+
+      <div class="funnel-track">
+
+        <div
+          class="funnel-fill"
+          style="
+            width:${Math.min(100,revenueRecoveryRate)}%;
+            background:var(--success-sage)
+          ">
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="funnel-row">
+
+      <div class="funnel-head">
+        <span>Revenue Not Recovered</span>
+        <span>${money(unrecovered)}</span>
+      </div>
+
+      <div class="funnel-track">
+
+        <div
+          class="funnel-fill"
+          style="
+            width:${totalAtRisk
+              ? Math.min(
+                  100,
+                  100 - revenueRecoveryRate
+                )
+              : 0}%;
+            background:var(--stopped-rose)
+          ">
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="funnel-total">
+
+      <span>
+        Net Value Created
+      </span>
+
+      <strong>
+        ${money(m.net_recovered_inr)}
+      </strong>
+
+    </div>
+
+  `;
+
+
+  renderReasonBreakdown();
+  renderDecisionDistribution();
+
+
+  /* ECONOMICS */
+
+  document.getElementById('economics').innerHTML = `
+
+    <div style="display:grid;gap:14px">
+
+      <div style="
+        display:flex;
+        justify-content:space-between">
+        <span>Gross recovered</span>
+        <strong class="mono-val">
+          ${money(recoveredRevenue)}
+        </strong>
+      </div>
+
+
+      <div style="
+        display:flex;
+        justify-content:space-between">
+        <span>Discount cost</span>
+        <strong class="mono-val">
+          ${money(m.cost_breakdown?.discount_costs_inr)}
+        </strong>
+      </div>
+
+
+      <div style="
+        display:flex;
+        justify-content:space-between">
+        <span>Human escalation cost</span>
+        <strong class="mono-val">
+          ${money(
+            m.cost_breakdown?.human_escalation_costs_inr
+          )}
+        </strong>
+      </div>
+
+
+      <div style="
+        border-top:1px solid var(--card-border);
+        padding-top:14px;
+        display:flex;
+        justify-content:space-between;
+        font-size:16px">
+
+        <strong>
+          Net recovered
+        </strong>
+
+        <strong class="mono-val">
+          ${money(m.net_recovered_inr)}
+        </strong>
+
+      </div>
+
+
+      <div style="
+        font-size:11px;
+        color:var(--text-muted)">
+
+        Recovery generated
+        ${roi ? roi.toFixed(0) : '∞'}×
+        the recorded agent cost.
+
+      </div>
+
+    </div>
+
+  `;
+
+
   drawChart(m);
 }
 
-let chartInstance;
-function drawChart(m) {
-  const ctx = document.getElementById('chart');
-  const data = {
-    labels: ['Rescued (Recovered)', 'Escalated / Stopped', 'Pending Retries'],
-    datasets: [{
-      label: 'Accounts',
-      data: [m.recovered_count, m.escalated_or_gave_up, m.still_pending],
-      backgroundColor: ['#2E7D52','#A94442','#C59B27'],
-      borderRadius: 8
-    }]
-  };
-  if (chartInstance) chartInstance.destroy();
-  chartInstance = new Chart(ctx, {
-    type: 'bar',
-    data,
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { grid: { color: '#E8DFD5' }, ticks: { color: '#7C6C62', font: { family: 'IBM Plex Mono' } } },
-        x: { grid: { display: false }, ticks: { color: '#7C6C62', font: { family: 'Plus Jakarta Sans', weight: '600' } } }
-      }
-    }
+
+/* =========================
+   FAILURE BREAKDOWN
+========================= */
+
+function renderReasonBreakdown() {
+
+  const counts = {};
+
+  customers.forEach(c => {
+
+    const reason =
+      c.latest_reason ||
+      c.reason_code ||
+      'unknown';
+
+    counts[reason] =
+      (counts[reason] || 0) + 1;
+
   });
+
+
+  const entries =
+    Object.entries(counts)
+      .sort((a,b) => b[1] - a[1]);
+
+  const max =
+    Math.max(
+      ...entries.map(x => x[1]),
+      1
+    );
+
+
+  document.getElementById('reasonList').innerHTML =
+    entries.length
+
+      ? entries.map(([reason,count]) => `
+
+        <div class="reason-item">
+
+          <div class="reason-name">
+            ${pretty(reason)}
+          </div>
+
+          <div class="reason-track">
+
+            <div
+              class="reason-fill"
+              style="width:${count / max * 100}%">
+            </div>
+
+          </div>
+
+          <div class="reason-count">
+            ${count}
+          </div>
+
+        </div>
+
+      `).join('')
+
+      : `
+        <div style="
+          color:var(--text-muted);
+          font-size:12px">
+          No failure-reason data available.
+        </div>
+      `;
 }
+
+
+/* =========================
+   DECISION DISTRIBUTION
+========================= */
+
+function renderDecisionDistribution() {
+
+  const counts = {};
+
+  customers.forEach(c => {
+
+    const action =
+      c.latest_action ||
+      c.action_taken ||
+      'unknown';
+
+    counts[action] =
+      (counts[action] || 0) + 1;
+
+  });
+
+
+  const actions = [
+    'retry_now',
+    'retry_in_24h',
+    'send_discount_offer',
+    'escalate_human',
+    'give_up'
+  ];
+
+
+  document.getElementById('decisionGrid').innerHTML =
+    actions.map(action => `
+
+      <div class="decision-box">
+
+        <div class="decision-num">
+          ${counts[action] || 0}
+        </div>
+
+        <div class="decision-label">
+          ${pretty(action)}
+        </div>
+
+      </div>
+
+    `).join('');
+}
+
+
+/* =========================
+   CHART
+========================= */
+
+function drawChart(m) {
+
+  const ctx =
+    document.getElementById('chart');
+
+  const data = {
+
+    labels:[
+      'Recovered',
+      'Escalated / Stopped',
+      'Pending'
+    ],
+
+    datasets:[{
+
+      label:'Accounts',
+
+      data:[
+        m.recovered_count || 0,
+        m.escalated_or_gave_up || 0,
+        m.still_pending || 0
+      ],
+
+      backgroundColor:[
+        '#2E7D52',
+        '#A94442',
+        '#C59B27'
+      ],
+
+      borderRadius:8
+
+    }]
+
+  };
+
+
+  if (chartInstance)
+    chartInstance.destroy();
+
+
+  chartInstance =
+    new Chart(ctx, {
+
+      type:'bar',
+
+      data,
+
+      options:{
+
+        responsive:true,
+
+        plugins:{
+          legend:{
+            display:false
+          }
+        },
+
+        scales:{
+
+          y:{
+            beginAtZero:true,
+            grid:{
+              color:'#E8DFD5'
+            },
+            ticks:{
+              color:'#7C6C62',
+              font:{
+                family:'IBM Plex Mono'
+              }
+            }
+          },
+
+          x:{
+            grid:{
+              display:false
+            },
+            ticks:{
+              color:'#7C6C62',
+              font:{
+                family:'Plus Jakarta Sans',
+                weight:'600'
+              }
+            }
+          }
+
+        }
+
+      }
+
+    });
+
+}
+
+
+/* =========================
+   CUSTOMERS
+========================= */
 
 async function loadCustomers() {
-  const res = await fetch('/customers');
-  const rows = await res.json();
-  const tbody = document.querySelector('#customerTable tbody');
-  tbody.innerHTML = rows.map(r => {
-    const outcome = r.latest_outcome || 'pending';
-    let badgeClass = 'pill-pending';
-    if (outcome === 'recovered') badgeClass = 'pill-recovered';
-    if (outcome === 'stopped' || outcome === 'escalated') badgeClass = 'pill-stopped';
 
-    return `
-      <tr onclick="loadAudit('${r.id}')">
-        <td class="mono-val">${r.id}</td>
-        <td class="mono-val">₹${((r.amount||0)/100).toFixed(2)}</td>
-        <td class="mono-val"><code>${r.latest_action || '-'}</code></td>
-        <td><span class="pill-badge ${badgeClass}">${outcome}</span></td>
-      </tr>
-    `;
-  }).join('');
+  const res =
+    await fetch('/customers');
+
+  if (!res.ok)
+    throw new Error('Unable to load customers');
+
+  const data =
+    await res.json();
+
+
+  customers =
+    Array.isArray(data)
+      ? data
+      : (
+          Array.isArray(data.value)
+            ? data.value
+            : []
+        );
+
+
+  renderCustomers();
+  renderLiveFeed();
 }
+
+
+function renderCustomers() {
+
+  const search =
+    (
+      document.getElementById(
+        'customerSearch'
+      )?.value || ''
+    ).toLowerCase().trim();
+
+
+  const filtered =
+    customers.filter(r =>
+
+      [
+        r.id,
+        r.email,
+        r.latest_action,
+        r.action_taken,
+        r.latest_outcome,
+        r.outcome,
+        r.latest_reason,
+        r.reason_code
+      ]
+
+      .some(v =>
+        String(v || '')
+          .toLowerCase()
+          .includes(search)
+      )
+
+    );
+
+
+  const tbody =
+    document.querySelector(
+      '#customerTable tbody'
+    );
+
+
+  tbody.innerHTML =
+    filtered.map(r => {
+
+      const outcome =
+        r.latest_outcome ||
+        r.outcome ||
+        'pending';
+
+
+      let badgeClass =
+        'pill-pending';
+
+
+      if (outcome === 'recovered')
+        badgeClass =
+          'pill-recovered';
+
+
+      if (
+        outcome === 'stopped' ||
+        outcome === 'escalated'
+      )
+        badgeClass =
+          'pill-stopped';
+
+
+      return `
+
+        <tr onclick="
+          loadAudit('${String(r.id).replaceAll("'","")}')
+        ">
+
+          <td class="mono-val">
+            ${r.id}
+          </td>
+
+          <td class="mono-val">
+            ${money(paiseToInr(r.amount))}
+          </td>
+
+          <td class="mono-val">
+            <code>
+              ${pretty(r.latest_action || r.action_taken)}
+            </code>
+          </td>
+
+          <td>
+            <span
+              class="pill-badge ${badgeClass}">
+              ${outcome}
+            </span>
+          </td>
+
+        </tr>
+
+      `;
+
+    }).join('');
+}
+
+
+/* =========================
+   LIVE FEED
+========================= */
+
+function renderLiveFeed() {
+
+  const feed =
+    customers
+      .slice()
+      .reverse()
+      .slice(0,8);
+
+
+  document.getElementById('liveFeed').innerHTML =
+    feed.map(r => {
+
+      const stopped =
+        r.latest_outcome !== 'recovered';
+
+
+      return `
+
+        <div class="feed-item">
+
+          <span
+            class="feed-dot ${stopped ? 'stop' : ''}">
+          </span>
+
+          <div class="feed-main">
+
+            <strong>
+              ${r.id}
+            </strong>
+
+            —
+            ${money(paiseToInr(r.amount))}
+
+            ${stopped
+              ? ' escalated/stopped'
+              : ' recovered'}
+
+            <div class="feed-time">
+              ${pretty(r.latest_action || r.action_taken)}
+            </div>
+
+          </div>
+
+        </div>
+
+      `;
+
+    }).join('');
+}
+
+
+/* =========================
+   AUDIT
+========================= */
 
 async function loadAudit(customerId) {
-  const res = await fetch(`/audit/${customerId}`);
-  const rows = await res.json();
-  document.getElementById('auditCustomer').textContent = customerId;
-  
-  const tbody = document.getElementById('auditBody');
-  tbody.innerHTML = rows.map((r, idx) => {
-    let ruledOutList = [];
-    try {
-      ruledOutList = typeof r.ruled_out_json === 'string' ? JSON.parse(r.ruled_out_json) : (r.ruled_out_json || []);
-    } catch (_) { ruledOutList = []; }
 
-    const gatingBoxId = `gating_${r.id || idx}`;
-    const outcome = r.outcome || 'pending';
-    let badgeClass = 'pill-pending';
-    if (outcome === 'recovered') badgeClass = 'pill-recovered';
-    if (outcome === 'stopped' || outcome === 'escalated') badgeClass = 'pill-stopped';
+  const res =
+    await fetch(
+      `/audit/${encodeURIComponent(customerId)}`
+    );
 
-    return `
-      <tr>
-        <td class="mono-val">${new Date(r.created_at).toLocaleTimeString()}</td>
-        <td class="mono-val">${r.event_type}</td>
-        <td class="mono-val"><code>${r.reason_code}</code></td>
-        <td class="mono-val"><strong>${r.action_taken}</strong></td>
-        <td>${r.llm_reasoning || ''}</td>
-        <td><span class="pill-badge ${badgeClass}">${outcome}</span></td>
-        <td>
-          <button onclick="event.stopPropagation(); toggleGating('${gatingBoxId}')" style="font-size: 11px; padding: 6px 12px;">
-            🔍 Why NOT Retry? (${ruledOutList.length})
-          </button>
-        </td>
-      </tr>
-      <tr id="${gatingBoxId}" style="display: none; background: #FAF5EF;">
-        <td colspan="7">
-          <div class="gating-container">
-            <strong style="color: var(--accent-gold); font-family: var(--sans);">Safety Gate Breakdown (Ruled-Out Actions Analysis):</strong>
-            <table style="margin-top: 10px;">
-              <thead>
-                <tr>
-                  <th style="color: #A39388;">Action Menu Item</th>
-                  <th style="color: #A39388;">Gating Status</th>
-                  <th style="color: #A39388;">Rule Justification</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${ruledOutList.map(item => `
+  if (!res.ok)
+    return;
+
+
+  const rows =
+    await res.json();
+
+
+  document.getElementById(
+    'auditCustomer'
+  ).textContent =
+    customerId;
+
+
+  const first =
+    rows[0] || {};
+
+
+  const nonRetryable =
+    [
+      'card_expired',
+      'invalid_card'
+    ].includes(
+      first.reason_code
+    );
+
+
+  document.getElementById(
+    'auditHighlight'
+  ).innerHTML = `
+
+    <div class="audit-highlight-title">
+
+      ${
+        nonRetryable
+          ? 'Why did Shimmer NOT retry?'
+          : 'Why did Shimmer take this path?'
+      }
+
+    </div>
+
+
+    <div class="audit-highlight-text">
+
+      ${
+        nonRetryable
+
+          ? `
+            The payment was classified as
+            <strong>
+              ${pretty(first.reason_code)}
+            </strong>,
+            which is non-retryable under the
+            safety policy. Shimmer therefore
+            escalates instead of repeatedly
+            attempting a payment method that
+            cannot succeed.
+          `
+
+          : `
+            The payment was classified as
+            <strong>
+              ${pretty(first.reason_code)}
+            </strong>.
+            Shimmer evaluates retryability,
+            attempt limits and intervention rules
+            before executing the selected action.
+          `
+      }
+
+    </div>
+
+  `;
+
+
+  const tbody =
+    document.getElementById(
+      'auditBody'
+    );
+
+
+  tbody.innerHTML =
+    rows.map((r,idx) => {
+
+      let ruledOutList = [];
+
+      try {
+
+        ruledOutList =
+          typeof r.ruled_out_json === 'string'
+
+            ? JSON.parse(
+                r.ruled_out_json
+              )
+
+            : (
+                r.ruled_out_json || []
+              );
+
+      } catch (_) {}
+
+
+      const gatingBoxId =
+        `gating_${r.id || idx}`;
+
+
+      const outcome =
+        r.outcome ||
+        'pending';
+
+
+      let badgeClass =
+        'pill-pending';
+
+
+      if (outcome === 'recovered')
+        badgeClass =
+          'pill-recovered';
+
+
+      if (
+        outcome === 'stopped' ||
+        outcome === 'escalated'
+      )
+        badgeClass =
+          'pill-stopped';
+
+
+      return `
+
+        <tr>
+
+          <td class="mono-val">
+            ${new Date(
+              r.created_at
+            ).toLocaleTimeString()}
+          </td>
+
+          <td class="mono-val">
+            ${r.event_type || '-'}
+          </td>
+
+          <td class="mono-val">
+            <code>
+              ${r.reason_code || '-'}
+            </code>
+          </td>
+
+          <td class="mono-val">
+            <strong>
+              ${r.action_taken || '-'}
+            </strong>
+          </td>
+
+          <td>
+            ${
+              r.llm_reasoning ||
+              'Deterministic safety fallback'
+            }
+          </td>
+
+          <td>
+
+            <span
+              class="pill-badge ${badgeClass}">
+              ${outcome}
+            </span>
+
+          </td>
+
+          <td>
+
+            <button
+              onclick="
+                event.stopPropagation();
+                toggleGating('${gatingBoxId}')
+              "
+              style="
+                font-size:11px;
+                padding:6px 12px;
+              ">
+
+              🔍 Why NOT Retry?
+              (${ruledOutList.length})
+
+            </button>
+
+          </td>
+
+        </tr>
+
+
+        <tr
+          id="${gatingBoxId}"
+          style="
+            display:none;
+            background:#FAF5EF;
+          ">
+
+          <td colspan="7">
+
+            <div class="gating-container">
+
+              <strong
+                style="
+                  color:var(--accent-gold);
+                ">
+
+                Safety Gate Breakdown
+
+              </strong>
+
+
+              <table style="margin-top:10px">
+
+                <thead>
+
                   <tr>
-                    <td class="mono-val"><code>${item.action}</code></td>
-                    <td><span class="status-tag status-${item.status}">${item.status}</span></td>
-                    <td style="color: #E8DFD5;">${item.reason}</td>
+
+                    <th style="color:#A39388">
+                      Action
+                    </th>
+
+                    <th style="color:#A39388">
+                      Status
+                    </th>
+
+                    <th style="color:#A39388">
+                      Rule Justification
+                    </th>
+
                   </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        </td>
-      </tr>
-    `;
-  }).join('');
-  
-  document.getElementById('auditPanel').style.display = 'block';
-  document.getElementById('auditPanel').scrollIntoView({ behavior: 'smooth' });
+
+                </thead>
+
+
+                <tbody>
+
+                  ${
+                    ruledOutList.map(item => `
+
+                      <tr>
+
+                        <td class="mono-val">
+                          <code>
+                            ${item.action || '-'}
+                          </code>
+                        </td>
+
+                        <td>
+
+                          <span
+                            class="
+                              status-tag
+                              status-${item.status}
+                            ">
+
+                            ${item.status || '-'}
+
+                          </span>
+
+                        </td>
+
+                        <td style="color:#E8DFD5">
+
+                          ${item.reason || '-'}
+
+                        </td>
+
+                      </tr>
+
+                    `).join('')
+                  }
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </td>
+
+        </tr>
+
+      `;
+
+    }).join('');
+
+
+  document.getElementById(
+    'auditPanel'
+  ).style.display =
+    'block';
+
+
+  document.getElementById(
+    'auditPanel'
+  ).scrollIntoView({
+    behavior:'smooth'
+  });
+
 }
+
 
 function toggleGating(id) {
-  const el = document.getElementById(id);
-  if (el) el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+
+  const el =
+    document.getElementById(id);
+
+  if (el) {
+
+    el.style.display =
+      el.style.display === 'none'
+        ? 'table-row'
+        : 'none';
+
+  }
+
 }
+
+
+/* =========================
+   AI AUDIT ASSISTANT
+========================= */
 
 function askAi(q) {
-  document.getElementById('aiQueryInput').value = q;
+
+  document.getElementById(
+    'aiQueryInput'
+  ).value = q;
+
   runAiQuery();
+
 }
+
 
 async function runAiQuery() {
-  const q = document.getElementById('aiQueryInput').value.trim();
-  if (!q) return;
 
-  const respBox = document.getElementById('aiResponse');
-  respBox.style.display = 'block';
-  respBox.innerHTML = '✨ <em>Consulting Claude Audit Intelligence...</em>';
+  const q =
+    document.getElementById(
+      'aiQueryInput'
+    ).value.trim();
+
+
+  if (!q)
+    return;
+
+
+  const responseBox =
+    document.getElementById(
+      'aiResponse'
+    );
+
+
+  responseBox.style.display =
+    'block';
+
+
+  responseBox.innerHTML =
+    '✨ <em>Consulting Claude Audit Intelligence...</em>';
+
 
   try {
-    const res = await fetch('/query-audit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: q })
-    });
-    const data = await res.json();
-    respBox.innerHTML = `<strong>Audit Response:</strong> ${data.answer}`;
-  } catch (err) {
-    respBox.innerHTML = `❌ Error querying audit assistant: ${err.message}`;
+
+    const res =
+      await fetch(
+        '/query-audit',
+        {
+          method:'POST',
+
+          headers:{
+            'Content-Type':
+              'application/json'
+          },
+
+          body:JSON.stringify({
+            query:q
+          })
+
+        }
+      );
+
+
+    const data =
+      await res.json();
+
+
+    responseBox.innerHTML = `
+
+      <strong>
+        Audit Response:
+      </strong>
+
+      ${
+        data.answer ||
+        data.error ||
+        'No answer returned.'
+      }
+
+    `;
+
   }
+
+  catch(err) {
+
+    responseBox.innerHTML =
+      `❌ Error querying audit assistant: ${err.message}`;
+
+  }
+
 }
+
+
+/* =========================
+   RESET
+========================= */
 
 async function resetDemo() {
-  if (!confirm('Wipe all demo data and restart clean?')) return;
-  await fetch('/reset-demo', {
-    method: 'POST',
-    headers: { 'x-admin-key': 'admin123' }
-  });
-  document.getElementById('auditPanel').style.display = 'none';
+
+  if (
+    !confirm(
+      'Wipe all demo data and restart clean?'
+    )
+  )
+    return;
+
+
+  await fetch(
+    '/reset-demo',
+    {
+      method:'POST',
+
+      headers:{
+        'x-admin-key':
+          'admin123'
+      }
+
+    }
+  );
+
+
+  document.getElementById(
+    'auditPanel'
+  ).style.display =
+    'none';
+
+
   await loadAll();
+
 }
+
+
+/* =========================
+   LOAD EVERYTHING
+========================= */
 
 async function loadAll() {
-  await loadMetrics();
-  await loadCustomers();
+
+  try {
+
+    await loadCustomers();
+
+    await loadMetrics();
+
+  }
+
+  catch(err) {
+
+    console.error(err);
+
+    document.getElementById(
+      'kpis'
+    ).innerHTML = `
+
+      <div
+        class="kpi-card"
+        style="
+          grid-column:1/-1;
+          color:var(--stopped-rose);
+        ">
+
+        Dashboard error:
+        ${err.message}
+
+      </div>
+
+    `;
+
+  }
+
 }
 
+
 loadAll();
-setInterval(loadAll, 6000);
+
+setInterval(
+  loadAll,
+  6000
+);
+
 </script>
+
 </body>
 </html>

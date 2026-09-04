@@ -193,28 +193,80 @@ app.get('/customers', async (req, res) => {
       'SELECT * FROM customers ORDER BY id ASC'
     );
 
+    /*
+     * Get the most recent event for each customer
+     * that contains a reason_code.
+     *
+     * This prevents a later scheduled/recovery event
+     * without a reason_code from hiding the original
+     * payment failure reason.
+     */
     const events = await pool.query(
-      'SELECT * FROM events ORDER BY created_at ASC'
+      `SELECT DISTINCT ON (customer_id)
+        customer_id,
+        action_taken,
+        outcome,
+        reason_code,
+        created_at
+       FROM events
+       WHERE reason_code IS NOT NULL
+       ORDER BY customer_id, created_at DESC`
     );
 
-    const eventMap = {};
+    /*
+     * Get the most recent event separately.
+     *
+     * This is used for the current action/outcome.
+     */
+    const latestEvents = await pool.query(
+      `SELECT DISTINCT ON (customer_id)
+        customer_id,
+        action_taken,
+        outcome,
+        created_at
+       FROM events
+       ORDER BY customer_id, created_at DESC`
+    );
+
+    const reasonMap = {};
+    const latestMap = {};
 
     for (const ev of events.rows) {
-      eventMap[ev.customer_id] = ev;
+      reasonMap[ev.customer_id] = ev;
     }
 
-    const result = customers.rows.map(c => ({
-      id: c.id,
-      email: c.email,
-      amount: c.amount,
-      latest_outcome:
-        eventMap[c.id]?.outcome || 'pending',
-      latest_action:
-        eventMap[c.id]?.action_taken || '-'
-    }));
+    for (const ev of latestEvents.rows) {
+      latestMap[ev.customer_id] = ev;
+    }
+
+    const result = customers.rows.map(c => {
+      const latestEvent = latestMap[c.id];
+      const reasonEvent = reasonMap[c.id];
+
+      return {
+        id: c.id,
+        email: c.email,
+        amount: c.amount,
+
+        latest_outcome:
+          latestEvent?.outcome || 'pending',
+
+        latest_action:
+          latestEvent?.action_taken || '-',
+
+        latest_reason:
+          reasonEvent?.reason_code || 'unknown'
+      };
+    });
 
     res.json(result);
+
   } catch (err) {
+    console.error(
+      'Customers endpoint error:',
+      err
+    );
+
     res.status(500).json({
       error: err.message
     });
@@ -351,12 +403,14 @@ app.post('/query-audit', async (req, res) => {
             ?.text
             ?.trim() ||
           'Unable to generate audit answer.';
+
       } else {
         answer = buildFallbackAnswer(
           query,
           eventsContext
         );
       }
+
     } catch (err) {
       console.warn(
         '[query-audit] LLM query error, using fallback synthesizer:',
@@ -417,8 +471,7 @@ function buildFallbackAnswer(
       if (
         targetEvent.action_taken ===
           'escalate_human' ||
-        targetEvent.outcome ===
-          'stopped'
+        targetEvent.outcome === 'stopped'
       ) {
         return (
           `Recovery attempts for ${targetEvent.customer_id} ` +
@@ -431,7 +484,7 @@ function buildFallbackAnswer(
 
       if (
         targetEvent.action_taken ===
-        'retry_now'
+          'retry_now'
       ) {
         return (
           `Account ${targetEvent.customer_id} encountered ` +
@@ -443,7 +496,7 @@ function buildFallbackAnswer(
 
       if (
         targetEvent.action_taken ===
-        'send_discount_offer'
+          'send_discount_offer'
       ) {
         return (
           `Account ${targetEvent.customer_id} experienced ` +
@@ -455,7 +508,7 @@ function buildFallbackAnswer(
 
       if (
         targetEvent.action_taken ===
-        'retry_in_24h'
+          'retry_in_24h'
       ) {
         return (
           `Account ${targetEvent.customer_id} experienced ` +
