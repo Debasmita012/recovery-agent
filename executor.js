@@ -1,64 +1,192 @@
-const Razorpay = require('razorpay');
-require('dotenv').config();
+/**
+ * Payment Recovery Executor
+ *
+ * IMPORTANT:
+ * This executor is a DEMO/test-mode simulator.
+ * It does not charge real customers.
+ *
+ * The simulator is deterministic so that batch evaluations
+ * produce reproducible recovery results.
+ */
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_dummy',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'dummy_secret'
-});
+const RECOVERY_RULES = {
+  insufficient_funds: {
+    retry_now_success: false,
+    retry_later_success: true,
+  },
 
-// Each function returns { status: 'recovered' | 'pending' | 'stopped', amountRecovered, retryAt, interventionCost }
-async function executeAction(action, { customerId, subscriptionId, amount, paymentId }) {
-  switch (action) {
-    case 'retry_now': {
-      try {
-        console.log(`[retry_now] Executing charge retry via Razorpay test API for ${customerId}, amount INR ${(amount/100).toFixed(2)}`);
-        
-        // If real payment ID exists, fetch payment status from Razorpay Test API
-        if (paymentId && process.env.RAZORPAY_KEY_ID && !process.env.RAZORPAY_KEY_ID.includes('xxx')) {
-          try {
-            await razorpay.payments.fetch(paymentId);
-          } catch (_) {
-            // Ignore API fetch errors in synthetic test mode
-          }
-        }
-        
-        // Realistic test-mode recovery success rate (~60% recovery on retry_now)
-        const succeeded = Math.random() > 0.4;
-        return succeeded
-          ? { status: 'recovered', amountRecovered: amount, interventionCost: 0 }
-          : { status: 'pending', amountRecovered: 0, interventionCost: 0 };
-      } catch (err) {
-        console.error('retry_now execution error:', err.message);
-        return { status: 'pending', amountRecovered: 0, interventionCost: 0 };
-      }
+  bank_declined: {
+    retry_now_success: true,
+    retry_later_success: true,
+  },
+
+  unknown: {
+    retry_now_success: true,
+    retry_later_success: false,
+  },
+
+  card_expired: {
+    retry_now_success: false,
+    retry_later_success: false,
+  },
+
+  invalid_card: {
+    retry_now_success: false,
+    retry_later_success: false,
+  },
+};
+
+function executeAction({
+  action,
+  amount,
+  reason,
+  attemptNumber = 1,
+}) {
+  const paymentAmount = Number(amount) || 0;
+
+  const rule = RECOVERY_RULES[reason] || RECOVERY_RULES.unknown;
+
+  // ---------------------------------------------------------
+  // Immediate retry
+  // ---------------------------------------------------------
+  if (action === 'retry_now') {
+    const recovered = Boolean(rule.retry_now_success);
+
+    if (recovered) {
+      return {
+        status: 'recovered',
+        amountRecovered: paymentAmount,
+        retryAt: null,
+        interventionCost: 0,
+        message: `Payment recovered successfully on immediate retry at attempt ${attemptNumber}.`,
+      };
     }
 
-    case 'retry_in_24h': {
-      const retryAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      console.log(`[retry_in_24h] Scheduled 24h retry for ${customerId} at ${retryAt.toISOString()}`);
-      return { status: 'pending', amountRecovered: 0, retryAt, interventionCost: 0 };
-    }
-
-    case 'send_discount_offer': {
-      console.log(`[send_discount_offer] Triggered 10% discount recovery email to ${customerId}`);
-      const discountCost = Math.round((amount || 0) * 0.10);
-      return { status: 'pending', amountRecovered: 0, interventionCost: discountCost };
-    }
-
-    case 'escalate_human': {
-      console.log(`[escalate_human] Queued ${customerId} for human agent follow-up ticket`);
-      // Standard SaaS Tier-1 human support ticket handle cost: ₹35 (3500 paise)
-      return { status: 'stopped', amountRecovered: 0, interventionCost: 3500 };
-    }
-
-    case 'give_up': {
-      console.log(`[give_up] Closing recovery attempts for ${customerId}`);
-      return { status: 'stopped', amountRecovered: 0, interventionCost: 0 };
-    }
-
-    default:
-      return { status: 'stopped', amountRecovered: 0, interventionCost: 0 };
+    return {
+      status: 'pending',
+      amountRecovered: 0,
+      retryAt: null,
+      interventionCost: 0,
+      message: `Immediate retry did not recover the payment; recovery remains pending.`,
+    };
   }
+
+  // ---------------------------------------------------------
+  // Delayed retry
+  // ---------------------------------------------------------
+  if (action === 'retry_in_24h') {
+    const retryAt = new Date(
+      Date.now() + 24 * 60 * 60 * 1000
+    ).toISOString();
+
+    /*
+     * We schedule the retry first.
+     *
+     * The actual retry is handled later by reprocessRetry().
+     * Therefore the initial event remains "pending".
+     */
+    return {
+      status: 'pending',
+      amountRecovered: 0,
+      retryAt,
+      interventionCost: 0,
+      message: 'Recovery retry scheduled for 24 hours later.',
+    };
+  }
+
+  // ---------------------------------------------------------
+  // Discount offer
+  // ---------------------------------------------------------
+  if (action === 'send_discount_offer') {
+    const discountCost = paymentAmount * 0.10;
+
+    return {
+      status: 'pending',
+      amountRecovered: 0,
+      retryAt: null,
+      interventionCost: discountCost,
+      message: 'Discount recovery offer sent; payment remains pending.',
+    };
+  }
+
+  // ---------------------------------------------------------
+  // Human escalation
+  // ---------------------------------------------------------
+  if (action === 'escalate_human') {
+    return {
+      status: 'stopped',
+      amountRecovered: 0,
+      retryAt: null,
+
+      // Estimated operational cost of human intervention.
+      interventionCost: 35,
+
+      message: 'Recovery stopped and escalated to human support.',
+    };
+  }
+
+  // ---------------------------------------------------------
+  // Give up
+  // ---------------------------------------------------------
+  if (action === 'give_up') {
+    return {
+      status: 'stopped',
+      amountRecovered: 0,
+      retryAt: null,
+      interventionCost: 0,
+      message: 'Recovery stopped according to policy.',
+    };
+  }
+
+  // ---------------------------------------------------------
+  // Unknown action — fail safely
+  // ---------------------------------------------------------
+  return {
+    status: 'stopped',
+    amountRecovered: 0,
+    retryAt: null,
+    interventionCost: 0,
+    message: `Unknown action "${action}". Recovery stopped safely.`,
+  };
 }
 
-module.exports = { executeAction };
+/**
+ * Used by the retry processor.
+ *
+ * Unlike the initial retry_in_24h call, this represents
+ * the actual retry attempt after the scheduled delay.
+ */
+function executeScheduledRetry({
+  amount,
+  reason,
+  attemptNumber = 2,
+}) {
+  const paymentAmount = Number(amount) || 0;
+
+  const rule = RECOVERY_RULES[reason] || RECOVERY_RULES.unknown;
+
+  if (rule.retry_later_success) {
+    return {
+      status: 'recovered',
+      amountRecovered: paymentAmount,
+      retryAt: null,
+      interventionCost: 0,
+      message: `Scheduled retry successfully recovered the payment on attempt ${attemptNumber}.`,
+    };
+  }
+
+  return {
+    status: 'pending',
+    amountRecovered: 0,
+    retryAt: new Date(
+      Date.now() + 24 * 60 * 60 * 1000
+    ).toISOString(),
+    interventionCost: 0,
+    message: `Scheduled retry did not recover the payment on attempt ${attemptNumber}.`,
+  };
+}
+
+module.exports = {
+  executeAction,
+  executeScheduledRetry,
+};
