@@ -1,478 +1,416 @@
-const { pool } = require('./db');
+const db = require('./db');
 const { classifyFailure } = require('./classifier');
 const { decideAction } = require('./decisionEngine');
-const { executeAction } = require('./executor');
+const {
+  executeAction,
+  executeScheduledRetry,
+} = require('./executor');
 
 
-// ============================================================
-// HANDLE PAYMENT FAILURE
-// ============================================================
+/**
+ * Handle an incoming Razorpay payment.failed webhook.
+ *
+ * Flow:
+ *
+ * Webhook
+ *   ↓
+ * Idempotency check
+ *   ↓
+ * Customer upsert
+ *   ↓
+ * Failure classification
+ *   ↓
+ * AI decision
+ *   ↓
+ * Safety-gated action
+ *   ↓
+ * Executor
+ *   ↓
+ * Audit log
+ */
+async function handleFailure(
+  webhookBody,
+  razorpayEventId,
+  eventType = 'payment.failed'
+) {
+  const payload = webhookBody?.payload || {};
+  const payment = payload?.payment?.entity || {};
 
-async function handleFailure(webhookBody, razorpayEventId, eventType) {
-  // ----------------------------------------------------------
-  // Extract the inner Razorpay payload.
-  //
-  // Webhook structure:
-  //
-  // {
-  //   event: "payment.failed",
-  //   event_id: "...",
-  //   payload: {
-  //     payment: {
-  //       entity: {...}
-  //     }
-  //   }
-  // }
-  // ----------------------------------------------------------
-
-  const payload = webhookBody?.payload;
-
-  if (!payload?.payment?.entity) {
-    throw new Error(
-      'Invalid webhook payload: payment.entity missing'
-    );
+  if (!razorpayEventId) {
+    throw new Error('Missing Razorpay event ID');
   }
 
-  const entity = payload.payment.entity;
+  if (!payment) {
+    throw new Error('Missing payment entity in webhook payload');
+  }
 
-  // ----------------------------------------------------------
+  // ---------------------------------------------------------
   // Extract customer information
-  // ----------------------------------------------------------
+  // ---------------------------------------------------------
+
+  const notes = payment.notes || {};
 
   const customerId =
-    entity.notes?.customer_id ||
-    entity.customer_id;
+    notes.customer_id ||
+    notes.customerId ||
+    payment.customer_id;
 
   if (!customerId) {
-    throw new Error(
-      'customer_id missing from payment entity'
-    );
+    throw new Error('Missing customer_id in payment payload');
   }
 
-  const amount =
-    Number(entity.amount) || 0;
+  const amount = Number(payment.amount) || 0;
 
   const subscriptionId =
-    entity.notes?.subscription_id ||
-    null;
+    payment.subscription_id ||
+    notes.subscription_id ||
+    `sub_${customerId}`;
+
+  const email =
+    payment.email ||
+    notes.email ||
+    `${customerId}@example.com`;
 
 
-  // ==========================================================
-  // IDEMPOTENCY
-  // ==========================================================
+  // ---------------------------------------------------------
+  // Idempotency
+  // ---------------------------------------------------------
 
-  const existing = await pool.query(
-    `
-      SELECT id
-      FROM events
-      WHERE razorpay_event_id = $1
-      LIMIT 1
-    `,
+  const existingEvent = await db.query(
+    `SELECT id
+     FROM events
+     WHERE razorpay_event_id = $1`,
     [razorpayEventId]
   );
 
-  if (existing.rows.length > 0) {
-    console.log(
-      `[handler] Duplicate event ignored: ${razorpayEventId}`
-    );
-    return;
+  if (existingEvent.rows.length > 0) {
+    return {
+      status: 'duplicate',
+      message: 'Event already processed',
+      eventId: razorpayEventId,
+    };
   }
 
 
-  // ==========================================================
-  // CREATE / UPDATE CUSTOMER
-  // ==========================================================
+  // ---------------------------------------------------------
+  // Upsert customer
+  // ---------------------------------------------------------
 
-  await pool.query(
-    `
-      INSERT INTO customers (
-        id,
-        email,
-        subscription_id,
-        amount
-      )
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (id)
-      DO UPDATE SET
-        email = COALESCE(EXCLUDED.email, customers.email),
-        subscription_id =
-          COALESCE(
-            EXCLUDED.subscription_id,
-            customers.subscription_id
-          ),
-        amount = EXCLUDED.amount
-    `,
+  await db.query(
+    `INSERT INTO customers (
+      id,
+      email,
+      subscription_id,
+      amount
+    )
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (id)
+    DO UPDATE SET
+      email = EXCLUDED.email,
+      subscription_id = EXCLUDED.subscription_id,
+      amount = EXCLUDED.amount`,
     [
       customerId,
-      entity.email || null,
+      email,
       subscriptionId,
-      amount
+      amount,
     ]
   );
 
 
-  // ==========================================================
-  // DETERMINE CURRENT RECOVERY ATTEMPT
-  // ==========================================================
+  // ---------------------------------------------------------
+  // Determine current recovery attempt
+  //
+  // The original failed payment counts as attempt 1.
+  // A subsequent scheduled retry becomes attempt 2.
+  // ---------------------------------------------------------
 
-  const priorAttempts = await pool.query(
-    `
-      SELECT COUNT(*)::int AS c
-      FROM events
-      WHERE customer_id = $1
-        AND action_taken IN (
-          'retry_now',
-          'retry_in_24h',
-          'send_discount_offer'
-        )
-    `,
+  const attemptResult = await db.query(
+    `SELECT COUNT(*) AS count
+     FROM events
+     WHERE customer_id = $1
+       AND action_taken IN (
+         'retry_now',
+         'retry_in_24h',
+         'send_discount_offer'
+       )`,
     [customerId]
   );
 
-  const attemptNumber =
-    priorAttempts.rows[0].c + 1;
+  const previousAttempts =
+    Number(attemptResult.rows[0]?.count) || 0;
+
+  const attemptNumber = previousAttempts + 1;
 
 
-  // ==========================================================
-  // CLASSIFY FAILURE
-  //
-  // classifier.js expects the INNER payload:
-  //
-  // payload.payment.entity
-  // ==========================================================
+  // ---------------------------------------------------------
+  // Classify payment failure
+  // ---------------------------------------------------------
 
-  const {
-    reason,
-    retryable
-  } = classifyFailure(payload);
+  const classification = classifyFailure(payload.payment);
+
+  const reason = classification.reason;
+  const retryable = classification.retryable;
 
 
-  console.log(
-    `[handler] ${customerId} | ` +
-    `reason=${reason} | ` +
-    `retryable=${retryable} | ` +
-    `attempt=${attemptNumber}`
-  );
-
-
-  // ==========================================================
-  // DECISION ENGINE
-  // ==========================================================
+  // ---------------------------------------------------------
+  // Ask decision engine for recovery action
+  // ---------------------------------------------------------
 
   const decision = await decideAction({
-    reasonCode: reason,
+    reason,
     retryable,
     attemptNumber,
-    amount
+    amount,
   });
 
 
-  console.log(
-    `[handler] Decision: ${decision.action} | ` +
-    `source=${decision.decision_source}`
-  );
+  // ---------------------------------------------------------
+  // Execute bounded action
+  // ---------------------------------------------------------
+
+  const result = executeAction({
+    action: decision.action,
+    amount,
+    reason,
+    attemptNumber,
+  });
 
 
-  // ==========================================================
-  // EXECUTE ACTION
-  // ==========================================================
+  // ---------------------------------------------------------
+  // Write audit record
+  // ---------------------------------------------------------
 
-  const result = await executeAction(
-    decision.action,
-    {
-      customerId,
-      subscriptionId,
-      amount,
-      attemptNumber
-    }
-  );
-
-
-  // executor.js returns:
-  //
-  // {
-  //   status: 'recovered' | 'pending' | 'stopped',
-  //   amountRecovered,
-  //   retryAt
-  // }
-  //
-  // Therefore we use result.status.
-  // ==========================================================
-
-  const outcome =
-    result.status || 'pending';
-
-
-  // ==========================================================
-  // BUILD AUDIT INFORMATION
-  // ==========================================================
-
-  const ruledOut =
-    Array.isArray(decision.ruled_out)
-      ? decision.ruled_out
-      : [];
-
-
-  // ==========================================================
-  // STORE EVENT
-  // ==========================================================
-
-  await pool.query(
-    `
-      INSERT INTO events (
-        razorpay_event_id,
-        customer_id,
-        event_type,
-        reason_code,
-        action_taken,
-        llm_reasoning,
-        outcome,
-        attempt_number,
-        amount_recovered,
-        retry_at,
-        processed,
-        ruled_out_json,
-        intervention_cost
-      )
-      VALUES (
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7,
-        $8,
-        $9,
-        $10,
-        $11,
-        $12,
-        $13
-      )
-    `,
+  await db.query(
+    `INSERT INTO events (
+      razorpay_event_id,
+      customer_id,
+      event_type,
+      reason_code,
+      action_taken,
+      llm_reasoning,
+      outcome,
+      attempt_number,
+      amount_recovered,
+      retry_at,
+      processed,
+      ruled_out_json,
+      intervention_cost
+    )
+    VALUES (
+      $1,
+      $2,
+      $3,
+      $4,
+      $5,
+      $6,
+      $7,
+      $8,
+      $9,
+      $10,
+      $11,
+      $12,
+      $13
+    )`,
     [
       razorpayEventId,
       customerId,
-      eventType || webhookBody.event || 'payment.failed',
+      eventType,
       reason,
       decision.action,
       decision.reasoning || '',
-      outcome,
+      result.status,
       attemptNumber,
-      Number(result.amountRecovered) || 0,
+      result.amountRecovered || 0,
       result.retryAt || null,
-      outcome !== 'pending',
-      JSON.stringify(ruledOut),
-      Number(result.interventionCost) || 0
+      false,
+      JSON.stringify(decision.ruledOut || []),
+      result.interventionCost || 0,
     ]
   );
 
 
-  console.log(
-    `[handler] Processed ${customerId}: ` +
-    `${decision.action} -> ${outcome}`
-  );
+  return {
+    status: result.status,
+    customerId,
+    reason,
+    action: decision.action,
+    attemptNumber,
+    amountRecovered: result.amountRecovered || 0,
+    retryAt: result.retryAt || null,
+    interventionCost: result.interventionCost || 0,
+    decisionSource: decision.decision_source,
+    reasoning: decision.reasoning,
+  };
 }
 
 
-// ============================================================
-// PROCESS SCHEDULED RETRY
-// ============================================================
-
+/**
+ * Process a scheduled retry.
+ *
+ * A retry_in_24h event is initially stored as "pending".
+ * When the retry processor runs, this function performs the
+ * actual simulated recovery attempt.
+ */
 async function reprocessRetry(eventRow) {
-  // ----------------------------------------------------------
-  // Find customer
-  // ----------------------------------------------------------
+  if (!eventRow) {
+    throw new Error('Missing event row');
+  }
 
-  const customer = await pool.query(
-    `
-      SELECT *
-      FROM customers
-      WHERE id = $1
-    `,
+  // ---------------------------------------------------------
+  // Load customer
+  // ---------------------------------------------------------
+
+  const customerResult = await db.query(
+    `SELECT
+       id,
+       email,
+       subscription_id,
+       amount
+     FROM customers
+     WHERE id = $1`,
     [eventRow.customer_id]
   );
 
-  if (customer.rows.length === 0) {
-    console.warn(
-      `[retry] Customer not found: ${eventRow.customer_id}`
+  if (customerResult.rows.length === 0) {
+    throw new Error(
+      `Customer ${eventRow.customer_id} not found for retry`
     );
-
-    return;
   }
 
-  const customerData =
-    customer.rows[0];
+  const customer = customerResult.rows[0];
 
-  const customerId =
-    customerData.id;
+  const amount = Number(customer.amount) || 0;
 
-  const amount =
-    Number(customerData.amount) || 0;
-
-  const subscriptionId =
-    customerData.subscription_id || null;
-
-
-  // ----------------------------------------------------------
-  // Preserve the attempt number from the scheduled retry.
-  // ----------------------------------------------------------
-
-  const attemptNumber =
+  const currentAttempt =
     Number(eventRow.attempt_number) || 1;
 
-
-  console.log(
-    `[retry] Processing ${customerId} | ` +
-    `attempt=${attemptNumber}`
-  );
+  const nextAttempt = currentAttempt + 1;
 
 
-  // ----------------------------------------------------------
-  // Re-evaluate action
-  // ----------------------------------------------------------
+  // ---------------------------------------------------------
+  // Ask decision engine whether another action is allowed
+  // ---------------------------------------------------------
 
   const decision = await decideAction({
-    reasonCode:
-      eventRow.reason_code || 'unknown',
-
+    reason: eventRow.reason_code,
     retryable: true,
-
-    attemptNumber,
-
-    amount
+    attemptNumber: nextAttempt,
+    amount,
   });
 
 
-  console.log(
-    `[retry] Decision: ${decision.action} | ` +
-    `source=${decision.decision_source}`
-  );
+  // ---------------------------------------------------------
+  // Execute scheduled retry
+  // ---------------------------------------------------------
 
+  let result;
 
-  // ----------------------------------------------------------
-  // Execute
-  // ----------------------------------------------------------
-
-  const result = await executeAction(
-    decision.action,
-    {
-      customerId,
-      subscriptionId,
+  /*
+   * If the AI still wants another delayed retry, we simulate
+   * the actual scheduled retry attempt.
+   */
+  if (decision.action === 'retry_in_24h') {
+    result = executeScheduledRetry({
       amount,
-      attemptNumber
-    }
-  );
+      reason: eventRow.reason_code,
+      attemptNumber: nextAttempt,
+    });
+  } else {
+    /*
+     * If the AI changes the action to retry_now,
+     * escalation, discount, etc., execute that action normally.
+     */
+    result = executeAction({
+      action: decision.action,
+      amount,
+      reason: eventRow.reason_code,
+      attemptNumber: nextAttempt,
+    });
+  }
 
 
-  const outcome =
-    result.status || 'pending';
+  // ---------------------------------------------------------
+  // Create audit event for retry attempt
+  // ---------------------------------------------------------
 
-
-  // ----------------------------------------------------------
-  // Audit data
-  // ----------------------------------------------------------
-
-  const ruledOut =
-    Array.isArray(decision.ruled_out)
-      ? decision.ruled_out
-      : [];
-
-
-  // ----------------------------------------------------------
-  // Create retry event
-  // ----------------------------------------------------------
-
-  await pool.query(
-    `
-      INSERT INTO events (
-        razorpay_event_id,
-        customer_id,
-        event_type,
-        reason_code,
-        action_taken,
-        llm_reasoning,
-        outcome,
-        attempt_number,
-        amount_recovered,
-        retry_at,
-        processed,
-        ruled_out_json,
-        intervention_cost
-      )
-      VALUES (
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7,
-        $8,
-        $9,
-        $10,
-        $11,
-        $12,
-        $13
-      )
-    `,
+  await db.query(
+    `INSERT INTO events (
+      razorpay_event_id,
+      customer_id,
+      event_type,
+      reason_code,
+      action_taken,
+      llm_reasoning,
+      outcome,
+      attempt_number,
+      amount_recovered,
+      retry_at,
+      processed,
+      ruled_out_json,
+      intervention_cost
+    )
+    VALUES (
+      $1,
+      $2,
+      $3,
+      $4,
+      $5,
+      $6,
+      $7,
+      $8,
+      $9,
+      $10,
+      $11,
+      $12,
+      $13
+    )`,
     [
       `retry_${eventRow.id}_${Date.now()}`,
-
-      customerId,
-
-      'scheduled_retry',
-
-      eventRow.reason_code ||
-        'unknown',
-
+      eventRow.customer_id,
+      'payment.retry',
+      eventRow.reason_code,
       decision.action,
-
       decision.reasoning || '',
-
-      outcome,
-
-      attemptNumber,
-
-      Number(result.amountRecovered) || 0,
-
+      result.status,
+      nextAttempt,
+      result.amountRecovered || 0,
       result.retryAt || null,
-
-      outcome !== 'pending',
-
-      JSON.stringify(ruledOut),
-
-      Number(result.interventionCost) || 0
+      false,
+      JSON.stringify(decision.ruledOut || []),
+      result.interventionCost || 0,
     ]
   );
 
 
-  // ----------------------------------------------------------
-  // Mark original scheduled retry as processed
-  // ----------------------------------------------------------
+  // ---------------------------------------------------------
+  // Mark original scheduled event as processed
+  // ---------------------------------------------------------
 
-  await pool.query(
-    `
-      UPDATE events
-      SET processed = true
-      WHERE id = $1
-    `,
+  await db.query(
+    `UPDATE events
+     SET processed = true
+     WHERE id = $1`,
     [eventRow.id]
   );
 
 
-  console.log(
-    `[retry] Completed ${customerId}: ` +
-    `${decision.action} -> ${outcome}`
-  );
+  return {
+    status: result.status,
+    customerId: eventRow.customer_id,
+    reason: eventRow.reason_code,
+    action: decision.action,
+    attemptNumber: nextAttempt,
+    amountRecovered: result.amountRecovered || 0,
+    retryAt: result.retryAt || null,
+    interventionCost: result.interventionCost || 0,
+    decisionSource: decision.decision_source,
+    reasoning: decision.reasoning,
+  };
 }
 
 
-// ============================================================
-// EXPORTS
-// ============================================================
-
 module.exports = {
   handleFailure,
-  reprocessRetry
+  reprocessRetry,
 };
