@@ -1,4 +1,4 @@
-const db = require('./db');
+const { pool } = require('./db');
 const { classifyFailure } = require('./classifier');
 const { decideAction } = require('./decisionEngine');
 const {
@@ -8,13 +8,12 @@ const {
 
 
 /**
- * Handle an incoming Razorpay payment.failed webhook.
+ * Handle an incoming payment.failed webhook.
  *
  * Flow:
- *
  * Webhook
  *   ↓
- * Idempotency check
+ * Idempotency
  *   ↓
  * Customer upsert
  *   ↓
@@ -22,9 +21,9 @@ const {
  *   ↓
  * AI decision
  *   ↓
- * Safety-gated action
+ * Safety validation
  *   ↓
- * Executor
+ * Execute action
  *   ↓
  * Audit log
  */
@@ -40,9 +39,10 @@ async function handleFailure(
     throw new Error('Missing Razorpay event ID');
   }
 
-  if (!payment) {
+  if (!payment || Object.keys(payment).length === 0) {
     throw new Error('Missing payment entity in webhook payload');
   }
+
 
   // ---------------------------------------------------------
   // Extract customer information
@@ -76,7 +76,7 @@ async function handleFailure(
   // Idempotency
   // ---------------------------------------------------------
 
-  const existingEvent = await db.query(
+  const existingEvent = await pool.query(
     `SELECT id
      FROM events
      WHERE razorpay_event_id = $1`,
@@ -84,6 +84,10 @@ async function handleFailure(
   );
 
   if (existingEvent.rows.length > 0) {
+    console.log(
+      `Skipping duplicate event ${razorpayEventId}`
+    );
+
     return {
       status: 'duplicate',
       message: 'Event already processed',
@@ -96,7 +100,7 @@ async function handleFailure(
   // Upsert customer
   // ---------------------------------------------------------
 
-  await db.query(
+  await pool.query(
     `INSERT INTO customers (
       id,
       email,
@@ -119,14 +123,15 @@ async function handleFailure(
 
 
   // ---------------------------------------------------------
-  // Determine current recovery attempt
+  // Determine recovery attempt
   //
-  // The original failed payment counts as attempt 1.
-  // A subsequent scheduled retry becomes attempt 2.
+  // The original failed payment = attempt 1.
+  // A scheduled retry = attempt 2.
+  // Another retry = attempt 3.
   // ---------------------------------------------------------
 
-  const attemptResult = await db.query(
-    `SELECT COUNT(*) AS count
+  const attemptResult = await pool.query(
+    `SELECT COUNT(*)::int AS count
      FROM events
      WHERE customer_id = $1
        AND action_taken IN (
@@ -144,21 +149,28 @@ async function handleFailure(
 
 
   // ---------------------------------------------------------
-  // Classify payment failure
+  // Classify failure
+  //
+  // classifier.js expects the object containing
+  // payment.entity.
   // ---------------------------------------------------------
 
-  const classification = classifyFailure(payload.payment);
+  const classification = classifyFailure(
+    payload.payment
+  );
 
   const reason = classification.reason;
   const retryable = classification.retryable;
 
 
   // ---------------------------------------------------------
-  // Ask decision engine for recovery action
+  // AI decision
+  //
+  // decisionEngine.js expects "reasonCode".
   // ---------------------------------------------------------
 
   const decision = await decideAction({
-    reason,
+    reasonCode: reason,
     retryable,
     attemptNumber,
     amount,
@@ -178,10 +190,10 @@ async function handleFailure(
 
 
   // ---------------------------------------------------------
-  // Write audit record
+  // Audit log
   // ---------------------------------------------------------
 
-  await db.query(
+  await pool.query(
     `INSERT INTO events (
       razorpay_event_id,
       customer_id,
@@ -223,10 +235,20 @@ async function handleFailure(
       attemptNumber,
       result.amountRecovered || 0,
       result.retryAt || null,
-      false,
+
+      // Pending events must remain unprocessed so
+      // the retry cron can pick them up later.
+      result.status !== 'pending',
+
       JSON.stringify(decision.ruledOut || []),
       result.interventionCost || 0,
     ]
+  );
+
+
+  console.log(
+    `Processed ${customerId}: ` +
+    `${reason} → ${decision.action} → ${result.status}`
   );
 
 
@@ -239,8 +261,9 @@ async function handleFailure(
     amountRecovered: result.amountRecovered || 0,
     retryAt: result.retryAt || null,
     interventionCost: result.interventionCost || 0,
-    decisionSource: decision.decision_source,
-    reasoning: decision.reasoning,
+    decisionSource:
+      decision.decision_source || 'ai',
+    reasoning: decision.reasoning || '',
   };
 }
 
@@ -248,20 +271,20 @@ async function handleFailure(
 /**
  * Process a scheduled retry.
  *
- * A retry_in_24h event is initially stored as "pending".
- * When the retry processor runs, this function performs the
- * actual simulated recovery attempt.
+ * The original retry_in_24h event is initially pending.
+ * When retry_at becomes due, cron calls this function.
  */
 async function reprocessRetry(eventRow) {
   if (!eventRow) {
     throw new Error('Missing event row');
   }
 
+
   // ---------------------------------------------------------
   // Load customer
   // ---------------------------------------------------------
 
-  const customerResult = await db.query(
+  const customerResult = await pool.query(
     `SELECT
        id,
        email,
@@ -289,11 +312,11 @@ async function reprocessRetry(eventRow) {
 
 
   // ---------------------------------------------------------
-  // Ask decision engine whether another action is allowed
+  // Ask AI what should happen next
   // ---------------------------------------------------------
 
   const decision = await decideAction({
-    reason: eventRow.reason_code,
+    reasonCode: eventRow.reason_code,
     retryable: true,
     attemptNumber: nextAttempt,
     amount,
@@ -306,20 +329,24 @@ async function reprocessRetry(eventRow) {
 
   let result;
 
-  /*
-   * If the AI still wants another delayed retry, we simulate
-   * the actual scheduled retry attempt.
-   */
   if (decision.action === 'retry_in_24h') {
+
+    /*
+     * The customer has reached the scheduled retry stage.
+     * executeScheduledRetry() represents the actual retry
+     * attempt in our test-mode simulator.
+     */
     result = executeScheduledRetry({
       amount,
       reason: eventRow.reason_code,
       attemptNumber: nextAttempt,
     });
+
   } else {
+
     /*
-     * If the AI changes the action to retry_now,
-     * escalation, discount, etc., execute that action normally.
+     * If the AI changes its decision to another bounded
+     * action, execute that action normally.
      */
     result = executeAction({
       action: decision.action,
@@ -331,10 +358,10 @@ async function reprocessRetry(eventRow) {
 
 
   // ---------------------------------------------------------
-  // Create audit event for retry attempt
+  // Create audit record for retry
   // ---------------------------------------------------------
 
-  await db.query(
+  await pool.query(
     `INSERT INTO events (
       razorpay_event_id,
       customer_id,
@@ -368,7 +395,7 @@ async function reprocessRetry(eventRow) {
     [
       `retry_${eventRow.id}_${Date.now()}`,
       eventRow.customer_id,
-      'payment.retry',
+      'scheduled_retry',
       eventRow.reason_code,
       decision.action,
       decision.reasoning || '',
@@ -376,7 +403,7 @@ async function reprocessRetry(eventRow) {
       nextAttempt,
       result.amountRecovered || 0,
       result.retryAt || null,
-      false,
+      result.status !== 'pending',
       JSON.stringify(decision.ruledOut || []),
       result.interventionCost || 0,
     ]
@@ -387,11 +414,17 @@ async function reprocessRetry(eventRow) {
   // Mark original scheduled event as processed
   // ---------------------------------------------------------
 
-  await db.query(
+  await pool.query(
     `UPDATE events
      SET processed = true
      WHERE id = $1`,
     [eventRow.id]
+  );
+
+
+  console.log(
+    `Retry processed for ${eventRow.customer_id}: ` +
+    `${decision.action} → ${result.status}`
   );
 
 
@@ -404,8 +437,9 @@ async function reprocessRetry(eventRow) {
     amountRecovered: result.amountRecovered || 0,
     retryAt: result.retryAt || null,
     interventionCost: result.interventionCost || 0,
-    decisionSource: decision.decision_source,
-    reasoning: decision.reasoning,
+    decisionSource:
+      decision.decision_source || 'ai',
+    reasoning: decision.reasoning || '',
   };
 }
 
