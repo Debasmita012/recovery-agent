@@ -9,23 +9,6 @@ const {
 
 /**
  * Handle an incoming payment.failed webhook.
- *
- * Flow:
- * Webhook
- *   ↓
- * Idempotency
- *   ↓
- * Customer upsert
- *   ↓
- * Failure classification
- *   ↓
- * AI decision
- *   ↓
- * Safety validation
- *   ↓
- * Execute action
- *   ↓
- * Audit log
  */
 async function handleFailure(
   webhookBody,
@@ -45,7 +28,7 @@ async function handleFailure(
 
 
   // ---------------------------------------------------------
-  // Extract customer information
+  // Customer information
   // ---------------------------------------------------------
 
   const notes = payment.notes || {};
@@ -123,11 +106,7 @@ async function handleFailure(
 
 
   // ---------------------------------------------------------
-  // Determine recovery attempt
-  //
-  // The original failed payment = attempt 1.
-  // A scheduled retry = attempt 2.
-  // Another retry = attempt 3.
+  // Determine attempt number
   // ---------------------------------------------------------
 
   const attemptResult = await pool.query(
@@ -145,40 +124,41 @@ async function handleFailure(
   const previousAttempts =
     Number(attemptResult.rows[0]?.count) || 0;
 
-  const attemptNumber = previousAttempts + 1;
+  const attemptNumber =
+    previousAttempts + 1;
 
 
   // ---------------------------------------------------------
   // Classify failure
-  //
-  // classifier.js expects the object containing
-  // payment.entity.
   // ---------------------------------------------------------
 
- const classification = classifyFailure(
-  payload
-);
+  const classification =
+    classifyFailure(payload);
 
-  const reason = classification.reason;
-  const retryable = classification.retryable;
+  const reason =
+    classification.reason;
+
+  const retryable =
+    classification.retryable;
 
 
   // ---------------------------------------------------------
   // AI decision
   //
-  // decisionEngine.js expects "reasonCode".
+  // IMPORTANT:
+  // decisionEngine.js expects "attempts".
   // ---------------------------------------------------------
 
   const decision = await decideAction({
     reasonCode: reason,
     retryable,
-    attemptNumber,
+    attempts: attemptNumber,
     amount,
   });
 
 
   // ---------------------------------------------------------
-  // Execute bounded action
+  // Execute selected action
   // ---------------------------------------------------------
 
   const result = executeAction({
@@ -236,11 +216,13 @@ async function handleFailure(
       result.amountRecovered || 0,
       result.retryAt || null,
 
-      // Pending events must remain unprocessed so
-      // the retry cron can pick them up later.
+      // Pending retry events remain unprocessed.
       result.status !== 'pending',
 
-      JSON.stringify(decision.ruledOut || []),
+      JSON.stringify(
+        decision.ruledOut || []
+      ),
+
       result.interventionCost || 0,
     ]
   );
@@ -258,12 +240,16 @@ async function handleFailure(
     reason,
     action: decision.action,
     attemptNumber,
-    amountRecovered: result.amountRecovered || 0,
-    retryAt: result.retryAt || null,
-    interventionCost: result.interventionCost || 0,
+    amountRecovered:
+      result.amountRecovered || 0,
+    retryAt:
+      result.retryAt || null,
+    interventionCost:
+      result.interventionCost || 0,
     decisionSource:
       decision.decision_source || 'ai',
-    reasoning: decision.reasoning || '',
+    reasoning:
+      decision.reasoning || '',
   };
 }
 
@@ -271,8 +257,12 @@ async function handleFailure(
 /**
  * Process a scheduled retry.
  *
- * The original retry_in_24h event is initially pending.
- * When retry_at becomes due, cron calls this function.
+ * IMPORTANT:
+ * This is no longer treated as a request to schedule
+ * another retry.
+ *
+ * Once the retry is due, we directly execute the
+ * scheduled payment retry.
  */
 async function reprocessRetry(eventRow) {
   if (!eventRow) {
@@ -301,64 +291,47 @@ async function reprocessRetry(eventRow) {
     );
   }
 
-  const customer = customerResult.rows[0];
+  const customer =
+    customerResult.rows[0];
 
-  const amount = Number(customer.amount) || 0;
+  const amount =
+    Number(customer.amount) || 0;
 
   const currentAttempt =
     Number(eventRow.attempt_number) || 1;
 
-  const nextAttempt = currentAttempt + 1;
+  const nextAttempt =
+    currentAttempt + 1;
+
+
+  console.log(
+    `[retry] customer=${eventRow.customer_id}, ` +
+    `reason=${eventRow.reason_code}, ` +
+    `attempt=${nextAttempt}`
+  );
 
 
   // ---------------------------------------------------------
-  // Ask AI what should happen next
+  // Execute the scheduled retry directly
+  // ---------------------------------------------------------
+  //
+  // We have already decided earlier that this payment
+  // should be retried.
+  //
+  // The retry worker's job is now to execute that retry,
+  // not to schedule the same action again.
   // ---------------------------------------------------------
 
-  const decision = await decideAction({
-    reasonCode: eventRow.reason_code,
-    retryable: true,
-    attemptNumber: nextAttempt,
-    amount,
-  });
-
-
-  // ---------------------------------------------------------
-  // Execute scheduled retry
-  // ---------------------------------------------------------
-
-  let result;
-
-  if (decision.action === 'retry_in_24h') {
-
-    /*
-     * The customer has reached the scheduled retry stage.
-     * executeScheduledRetry() represents the actual retry
-     * attempt in our test-mode simulator.
-     */
-    result = executeScheduledRetry({
+  const result =
+    executeScheduledRetry({
       amount,
       reason: eventRow.reason_code,
       attemptNumber: nextAttempt,
     });
 
-  } else {
-
-    /*
-     * If the AI changes its decision to another bounded
-     * action, execute that action normally.
-     */
-    result = executeAction({
-      action: decision.action,
-      amount,
-      reason: eventRow.reason_code,
-      attemptNumber: nextAttempt,
-    });
-  }
-
 
   // ---------------------------------------------------------
-  // Create audit record for retry
+  // Record retry result
   // ---------------------------------------------------------
 
   await pool.query(
@@ -397,14 +370,18 @@ async function reprocessRetry(eventRow) {
       eventRow.customer_id,
       'scheduled_retry',
       eventRow.reason_code,
-      decision.action,
-      decision.reasoning || '',
+      'retry_now',
+      `Executed scheduled retry for ${eventRow.reason_code}.`,
       result.status,
       nextAttempt,
       result.amountRecovered || 0,
       result.retryAt || null,
+
+      // Recovered/stopped events are complete.
       result.status !== 'pending',
-      JSON.stringify(decision.ruledOut || []),
+
+      '[]',
+
       result.interventionCost || 0,
     ]
   );
@@ -423,23 +400,26 @@ async function reprocessRetry(eventRow) {
 
 
   console.log(
-    `Retry processed for ${eventRow.customer_id}: ` +
-    `${decision.action} → ${result.status}`
+    `[retry] ${eventRow.customer_id}: ` +
+    `${result.status}, ` +
+    `recovered=₹${result.amountRecovered || 0}`
   );
 
 
   return {
     status: result.status,
-    customerId: eventRow.customer_id,
-    reason: eventRow.reason_code,
-    action: decision.action,
+    customerId:
+      eventRow.customer_id,
+    reason:
+      eventRow.reason_code,
+    action: 'retry_now',
     attemptNumber: nextAttempt,
-    amountRecovered: result.amountRecovered || 0,
-    retryAt: result.retryAt || null,
-    interventionCost: result.interventionCost || 0,
-    decisionSource:
-      decision.decision_source || 'ai',
-    reasoning: decision.reasoning || '',
+    amountRecovered:
+      result.amountRecovered || 0,
+    retryAt:
+      result.retryAt || null,
+    interventionCost:
+      result.interventionCost || 0,
   };
 }
 
