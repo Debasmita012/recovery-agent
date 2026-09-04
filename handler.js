@@ -155,9 +155,9 @@ async function handleFailure(
   // payment.entity.
   // ---------------------------------------------------------
 
-  const classification = classifyFailure(
-    payload.payment
-  );
+ const classification = classifyFailure(
+  payload
+);
 
   const reason = classification.reason;
   const retryable = classification.retryable;
