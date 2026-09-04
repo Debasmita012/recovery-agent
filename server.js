@@ -15,6 +15,11 @@ const anthropicClient = new Anthropic({
 
 const app = express();
 
+
+// ============================================================
+// EXPRESS CONFIGURATION
+// ============================================================
+
 app.use(express.json({
   verify: (req, res, buf) => {
     req.rawBody = buf;
@@ -23,8 +28,15 @@ app.use(express.json({
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+
+// ============================================================
+// HOME PAGE
+// ============================================================
+
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+  res.sendFile(
+    path.join(__dirname, 'public', 'dashboard.html')
+  );
 });
 
 
@@ -52,7 +64,10 @@ function verifySignature(rawBody, signature) {
     return false;
   }
 
-  return crypto.timingSafeEqual(expectedBuf, sigBuf);
+  return crypto.timingSafeEqual(
+    expectedBuf,
+    sigBuf
+  );
 }
 
 
@@ -61,48 +76,59 @@ function verifySignature(rawBody, signature) {
 // ============================================================
 
 app.post('/webhook', (req, res) => {
-  const signature = req.headers['x-razorpay-signature'];
+  const signature =
+    req.headers['x-razorpay-signature'];
 
   let valid = false;
 
   try {
-    valid = verifySignature(req.rawBody, signature);
+    valid = verifySignature(
+      req.rawBody,
+      signature
+    );
   } catch (_) {
     valid = false;
   }
 
   if (!valid) {
-    return res.status(400).send('Invalid signature');
+    return res
+      .status(400)
+      .send('Invalid signature');
   }
 
-  // Acknowledge immediately.
-  // Processing happens asynchronously so the webhook does not
-  // remain open while the recovery agent is making a decision.
+  // ----------------------------------------------------------
+  // Acknowledge webhook immediately.
+  // Processing happens asynchronously.
+  // ----------------------------------------------------------
+
   res.status(200).send('ok');
 
   const event = req.body.event;
-  const payload = req.body.payload;
 
   const razorpayEventId =
     req.body.event_id ||
     `${event}_${Date.now()}_${Math.random()}`;
 
-  // ==========================================================
+  // ----------------------------------------------------------
   // IMPORTANT:
+  //
   // handler.js expects:
   //
-  // handleFailure(payload, eventId, eventType)
+  // handleFailure(
+  //   fullWebhookBody,
+  //   eventId,
+  //   eventType
+  // )
   //
-  // NOT:
-  // handleFailure(event, payload, eventId)
-  // ==========================================================
+  // Therefore we pass req.body, NOT req.body.payload.
+  // ----------------------------------------------------------
 
   if (
     event === 'payment.failed' ||
     event === 'subscription.charged.failed'
   ) {
     handleFailure(
-      payload,
+      req.body,
       razorpayEventId,
       event
     ).catch(err => {
@@ -122,6 +148,7 @@ app.post('/webhook', (req, res) => {
 app.get('/metrics', async (req, res) => {
   try {
     const metrics = await getMetrics();
+
     res.json(metrics);
   } catch (err) {
     res.status(500).json({
@@ -209,16 +236,18 @@ app.post('/query-audit', async (req, res) => {
       });
     }
 
-    const match = query.match(/cust_\d+/i);
+    const match =
+      query.match(/cust_\d+/i);
 
     let eventsContext = [];
 
     // --------------------------------------------------------
-    // Customer-specific audit query
+    // Customer-specific query
     // --------------------------------------------------------
 
     if (match) {
-      const customerId = match[0].toLowerCase();
+      const customerId =
+        match[0].toLowerCase();
 
       const rows = await pool.query(
         `
@@ -243,7 +272,7 @@ app.post('/query-audit', async (req, res) => {
     }
 
     // --------------------------------------------------------
-    // General audit query
+    // General query
     // --------------------------------------------------------
 
     else {
@@ -269,14 +298,15 @@ app.post('/query-audit', async (req, res) => {
 
     if (eventsContext.length === 0) {
       return res.json({
-        answer: `No audit event logs found for '${query}'.`
+        answer:
+          `No audit event logs found for '${query}'.`
       });
     }
 
     let answer = '';
 
     // ========================================================
-    // USE CLAUDE WHEN AVAILABLE
+    // CLAUDE AUDIT ASSISTANT
     // ========================================================
 
     try {
@@ -315,17 +345,13 @@ app.post('/query-audit', async (req, res) => {
 
         answer =
           response.content
-            .find(b => b.type === 'text')
+            .find(
+              b => b.type === 'text'
+            )
             ?.text
             ?.trim() ||
           'Unable to generate audit answer.';
-      }
-
-      // ======================================================
-      // FALLBACK AUDIT ENGINE
-      // ======================================================
-
-      else {
+      } else {
         answer = buildFallbackAnswer(
           query,
           eventsContext
@@ -345,7 +371,8 @@ app.post('/query-audit', async (req, res) => {
 
     res.json({
       answer,
-      contextCount: eventsContext.length
+      contextCount:
+        eventsContext.length
     });
 
   } catch (err) {
@@ -360,17 +387,22 @@ app.post('/query-audit', async (req, res) => {
 // FALLBACK AUDIT ANSWER ENGINE
 // ============================================================
 
-function buildFallbackAnswer(query, eventsContext) {
+function buildFallbackAnswer(
+  query,
+  eventsContext
+) {
   const q = query.toLowerCase();
 
-  const match = q.match(/cust_\d+/i);
+  const match =
+    q.match(/cust_\d+/i);
 
   // ----------------------------------------------------------
   // Customer-specific answer
   // ----------------------------------------------------------
 
   if (match) {
-    const targetId = match[0].toLowerCase();
+    const targetId =
+      match[0].toLowerCase();
 
     const targetEvent =
       eventsContext.find(
@@ -385,7 +417,8 @@ function buildFallbackAnswer(query, eventsContext) {
       if (
         targetEvent.action_taken ===
           'escalate_human' ||
-        targetEvent.outcome === 'stopped'
+        targetEvent.outcome ===
+          'stopped'
       ) {
         return (
           `Recovery attempts for ${targetEvent.customer_id} ` +
@@ -443,7 +476,7 @@ function buildFallbackAnswer(query, eventsContext) {
 
 
   // ----------------------------------------------------------
-  // Payment / failure queries
+  // Payment/failure queries
   // ----------------------------------------------------------
 
   if (
@@ -473,7 +506,7 @@ function buildFallbackAnswer(query, eventsContext) {
 
 
   // ----------------------------------------------------------
-  // Retry / gate queries
+  // Retry/gate queries
   // ----------------------------------------------------------
 
   if (
@@ -485,14 +518,17 @@ function buildFallbackAnswer(query, eventsContext) {
     const retriedCount =
       eventsContext.filter(
         e =>
-          e.action_taken === 'retry_now' ||
-          e.action_taken === 'retry_in_24h'
+          e.action_taken ===
+            'retry_now' ||
+          e.action_taken ===
+            'retry_in_24h'
       ).length;
 
     const gatedCount =
       eventsContext.filter(
         e =>
-          e.action_taken === 'escalate_human' ||
+          e.action_taken ===
+            'escalate_human' ||
           e.outcome === 'stopped'
       ).length;
 
