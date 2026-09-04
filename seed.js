@@ -1,10 +1,27 @@
 const axios = require('axios');
 const crypto = require('crypto');
+const https = require('https');
 require('dotenv').config();
 
 const rawUrl = process.argv[3] || process.env.BASE_URL || 'http://localhost:3000';
-const BASE_URL = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+let BASE_URL = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+
+// If targeting Railway domain that has ISP DNS blocks, route via Railway Edge IP 69.46.46.79
+let targetHost = '';
+if (BASE_URL.includes('up.railway.app')) {
+  try {
+    const urlObj = new URL(BASE_URL);
+    targetHost = urlObj.hostname;
+    BASE_URL = `${urlObj.protocol}//69.46.46.79`;
+  } catch (_) {}
+}
+
 const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || 'Ne3_ziwgWtbqLFv';
+
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false,
+  servername: targetHost || undefined
+});
 
 // Mix of failure reasons so your batch has a realistic spread for the metrics.
 const REASON_PROFILES = [
@@ -48,12 +65,18 @@ async function seedBatch(n = 40) {
     const body = JSON.stringify(payload);
     const signature = signPayload(body);
 
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-razorpay-signature': signature
+    };
+    if (targetHost) {
+      headers['Host'] = targetHost;
+    }
+
     try {
       await axios.post(`${BASE_URL}/webhook`, payload, {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-razorpay-signature': signature
-        }
+        headers,
+        httpsAgent: targetHost ? httpsAgent : undefined
       });
       console.log(`  sent failure for ${customerId} (${profile.error_reason})`);
     } catch (err) {
