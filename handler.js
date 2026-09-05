@@ -42,8 +42,18 @@ async function handleFailure(
     throw new Error('Missing customer_id in payment payload');
   }
 
-  const amount = Number(payment.amount) || 0;
+  const amount =
+  (Number(payment.amount) || 0) / 100;
+const razorpayPaymentId =
+  payment.id || null;
 
+const razorpayOrderId =
+  payment.order_id || null;
+
+const razorpaySubscriptionId =
+  payment.subscription_id ||
+  notes.subscription_id ||
+  null;
   const subscriptionId =
     payment.subscription_id ||
     notes.subscription_id ||
@@ -148,25 +158,27 @@ async function handleFailure(
   // IMPORTANT:
   // decisionEngine.js expects "attempts".
   // ---------------------------------------------------------
-
-  const decision = await decideAction({
-    reasonCode: reason,
-    retryable,
-    attempts: attemptNumber,
-    amount,
-  });
+const decision = await decideAction({
+  reasonCode: reason,
+  retryable,
+  attemptNumber,
+  amount,
+});
 
 
   // ---------------------------------------------------------
   // Execute selected action
   // ---------------------------------------------------------
 
-  const result = executeAction({
-    action: decision.action,
-    amount,
-    reason,
-    attemptNumber,
-  });
+ const result = executeAction({
+  action: decision.action,
+  amount,
+  reason,
+  attemptNumber,
+  razorpayPaymentId,
+  razorpayOrderId,
+  razorpaySubscriptionId,
+});
 
 
   // ---------------------------------------------------------

@@ -1,23 +1,53 @@
 /**
  * Payment Recovery Executor
  *
- * IMPORTANT:
- * This executor is a DEMO/test-mode simulator.
- * It does not charge real customers.
+ * Supports two modes:
  *
- * Retry delay is configurable through:
+ * 1. DEMO
+ *    - Uses deterministic simulation rules.
+ *    - Does not contact Razorpay.
  *
- * DEMO_RETRY_DELAY_MINUTES
+ * 2. RAZORPAY_TEST
+ *    - Reserved for Razorpay Test Mode integration.
+ *    - Uses Razorpay credentials from .env.
  *
- * Default:
- * 1440 minutes = 24 hours
- *
- * For buildathon testing we can set:
- *
- * DEMO_RETRY_DELAY_MINUTES=1
- *
- * so scheduled retries become testable within a minute.
+ * Current default:
+ * PAYMENT_EXECUTION_MODE=demo
  */
+
+const Razorpay = require('razorpay');
+
+
+// ============================================================
+// CONFIGURATION
+// ============================================================
+
+const EXECUTION_MODE =
+  (process.env.PAYMENT_EXECUTION_MODE || 'demo')
+    .trim()
+    .toLowerCase();
+
+
+// ============================================================
+// RAZORPAY CLIENT
+// ============================================================
+
+let razorpay = null;
+
+if (
+  process.env.RAZORPAY_KEY_ID &&
+  process.env.RAZORPAY_KEY_SECRET
+) {
+  razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+}
+
+
+// ============================================================
+// DEMO RECOVERY RULES
+// ============================================================
 
 const RECOVERY_RULES = {
   insufficient_funds: {
@@ -47,11 +77,10 @@ const RECOVERY_RULES = {
 };
 
 
-/**
- * Get the configured retry delay.
- *
- * Default = 24 hours.
- */
+// ============================================================
+// RETRY DELAY
+// ============================================================
+
 function getRetryDelayMinutes() {
   const configured = Number(
     process.env.DEMO_RETRY_DELAY_MINUTES
@@ -68,25 +97,27 @@ function getRetryDelayMinutes() {
 }
 
 
-/**
- * Execute an AI-selected recovery action.
- */
-function executeAction({
+// ============================================================
+// DEMO EXECUTOR
+// ============================================================
+
+function executeDemoAction({
   action,
   amount,
   reason,
   attemptNumber = 1,
 }) {
-  const paymentAmount = Number(amount) || 0;
+  const paymentAmount =
+    Number(amount) || 0;
 
   const rule =
     RECOVERY_RULES[reason] ||
     RECOVERY_RULES.unknown;
 
 
-  // ---------------------------------------------------------
+  // ----------------------------------------------------------
   // Immediate retry
-  // ---------------------------------------------------------
+  // ----------------------------------------------------------
 
   if (action === 'retry_now') {
     const recovered =
@@ -99,7 +130,7 @@ function executeAction({
         retryAt: null,
         interventionCost: 0,
         message:
-          `Payment recovered successfully on immediate retry at attempt ${attemptNumber}.`,
+          `Demo payment recovered successfully on immediate retry at attempt ${attemptNumber}.`,
       };
     }
 
@@ -109,23 +140,24 @@ function executeAction({
       retryAt: null,
       interventionCost: 0,
       message:
-        'Immediate retry did not recover the payment; recovery remains pending.',
+        'Demo immediate retry did not recover the payment; recovery remains pending.',
     };
   }
 
 
-  // ---------------------------------------------------------
+  // ----------------------------------------------------------
   // Delayed retry
-  // ---------------------------------------------------------
+  // ----------------------------------------------------------
 
   if (action === 'retry_in_24h') {
     const delayMinutes =
       getRetryDelayMinutes();
 
-    const retryAt = new Date(
-      Date.now() +
-      delayMinutes * 60 * 1000
-    ).toISOString();
+    const retryAt =
+      new Date(
+        Date.now() +
+        delayMinutes * 60 * 1000
+      ).toISOString();
 
     return {
       status: 'pending',
@@ -133,14 +165,14 @@ function executeAction({
       retryAt,
       interventionCost: 0,
       message:
-        `Recovery retry scheduled in ${delayMinutes} minute(s).`,
+        `Demo recovery retry scheduled in ${delayMinutes} minute(s).`,
     };
   }
 
 
-  // ---------------------------------------------------------
-  // Discount offer
-  // ---------------------------------------------------------
+  // ----------------------------------------------------------
+  // Discount
+  // ----------------------------------------------------------
 
   if (action === 'send_discount_offer') {
     const discountCost =
@@ -152,14 +184,14 @@ function executeAction({
       retryAt: null,
       interventionCost: discountCost,
       message:
-        'Discount recovery offer sent; payment remains pending.',
+        'Demo discount recovery offer sent; payment remains pending.',
     };
   }
 
 
-  // ---------------------------------------------------------
+  // ----------------------------------------------------------
   // Human escalation
-  // ---------------------------------------------------------
+  // ----------------------------------------------------------
 
   if (action === 'escalate_human') {
     return {
@@ -168,14 +200,14 @@ function executeAction({
       retryAt: null,
       interventionCost: 35,
       message:
-        'Recovery stopped and escalated to human support.',
+        'Demo recovery stopped and escalated to human support.',
     };
   }
 
 
-  // ---------------------------------------------------------
+  // ----------------------------------------------------------
   // Give up
-  // ---------------------------------------------------------
+  // ----------------------------------------------------------
 
   if (action === 'give_up') {
     return {
@@ -184,14 +216,14 @@ function executeAction({
       retryAt: null,
       interventionCost: 0,
       message:
-        'Recovery stopped according to policy.',
+        'Demo recovery stopped according to policy.',
     };
   }
 
 
-  // ---------------------------------------------------------
-  // Unknown action — fail safely
-  // ---------------------------------------------------------
+  // ----------------------------------------------------------
+  // Unknown action
+  // ----------------------------------------------------------
 
   return {
     status: 'stopped',
@@ -204,13 +236,11 @@ function executeAction({
 }
 
 
-/**
- * Execute an actual scheduled retry.
- *
- * This represents the payment retry occurring after
- * retry_at has become due.
- */
-function executeScheduledRetry({
+// ============================================================
+// DEMO SCHEDULED RETRY
+// ============================================================
+
+function executeDemoScheduledRetry({
   amount,
   reason,
   attemptNumber = 2,
@@ -230,7 +260,7 @@ function executeScheduledRetry({
       retryAt: null,
       interventionCost: 0,
       message:
-        `Scheduled retry successfully recovered the payment on attempt ${attemptNumber}.`,
+        `Demo scheduled retry successfully recovered the payment on attempt ${attemptNumber}.`,
     };
   }
 
@@ -238,16 +268,136 @@ function executeScheduledRetry({
   return {
     status: 'pending',
     amountRecovered: 0,
-    retryAt: new Date(
-      Date.now() +
-      getRetryDelayMinutes() * 60 * 1000
-    ).toISOString(),
+    retryAt:
+      new Date(
+        Date.now() +
+        getRetryDelayMinutes() * 60 * 1000
+      ).toISOString(),
     interventionCost: 0,
     message:
-      `Scheduled retry did not recover the payment on attempt ${attemptNumber}.`,
+      `Demo scheduled retry did not recover the payment on attempt ${attemptNumber}.`,
   };
 }
 
+
+// ============================================================
+// RAZORPAY TEST MODE PLACEHOLDER
+// ============================================================
+
+function assertRazorpayConfigured() {
+  if (!razorpay) {
+    throw new Error(
+      'Razorpay Test Mode is not configured. ' +
+      'Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env.'
+    );
+  }
+}
+
+
+// ============================================================
+// MAIN EXECUTOR
+// ============================================================
+
+function executeAction({
+  action,
+  amount,
+  reason,
+  attemptNumber = 1,
+  razorpayPaymentId = null,
+  razorpayOrderId = null,
+  razorpaySubscriptionId = null,
+}) {
+
+  if (EXECUTION_MODE === 'demo') {
+    return executeDemoAction({
+      action,
+      amount,
+      reason,
+      attemptNumber,
+    });
+  }
+
+
+  if (
+    EXECUTION_MODE === 'razorpay_test' ||
+    EXECUTION_MODE === 'test'
+  ) {
+    assertRazorpayConfigured();
+
+    /*
+     * IMPORTANT:
+     *
+     * The actual Razorpay retry cannot be performed yet
+     * because this function currently receives only:
+     *
+     * amount
+     * reason
+     * action
+     * attemptNumber
+     *
+     * We need the original Razorpay payment/order ID.
+     *
+     * Step 4 will add those identifiers to handler.js and
+     * pass them into this executor.
+     */
+
+    throw new Error(
+      'Razorpay Test Mode is configured but payment identifiers ' +
+      'have not yet been connected to the executor.'
+    );
+  }
+
+
+  throw new Error(
+    `Unknown PAYMENT_EXECUTION_MODE: ${EXECUTION_MODE}`
+  );
+}
+
+
+// ============================================================
+// SCHEDULED RETRY EXECUTOR
+// ============================================================
+
+function executeScheduledRetry({
+  amount,
+  reason,
+  attemptNumber = 2,
+  razorpayPaymentId = null,
+  razorpayOrderId = null,
+  razorpaySubscriptionId = null,
+}) {
+
+  if (EXECUTION_MODE === 'demo') {
+    return executeDemoScheduledRetry({
+      amount,
+      reason,
+      attemptNumber,
+    });
+  }
+
+
+  if (
+    EXECUTION_MODE === 'razorpay_test' ||
+    EXECUTION_MODE === 'test'
+  ) {
+    assertRazorpayConfigured();
+
+    throw new Error(
+      'Razorpay Test Mode scheduled retry requires the original ' +
+      'Razorpay payment/order identifier. This will be connected in Step 4.'
+    );
+  }
+
+
+  throw new Error(
+    `Unknown PAYMENT_EXECUTION_MODE: ${EXECUTION_MODE}`
+  );
+}
+
+
+// ============================================================
+// EXPORTS
+// ============================================================
 
 module.exports = {
   executeAction,
