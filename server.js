@@ -441,213 +441,257 @@ app.post('/query-audit', async (req, res) => {
 // FALLBACK AUDIT ANSWER ENGINE
 // ============================================================
 
-function buildFallbackAnswer(
-  query,
-  eventsContext
-) {
-  const q = query.toLowerCase();
+function buildFallbackAnswer(query, eventsContext) {
+  const q = query.toLowerCase().trim();
 
-  const match =
-    q.match(/cust_\d+/i);
+  const total = eventsContext.length;
 
-  // ----------------------------------------------------------
-  // Customer-specific answer
-  // ----------------------------------------------------------
+  // ==========================================================
+  // BASIC COUNTS
+  // ==========================================================
 
-  if (match) {
-    const targetId =
-      match[0].toLowerCase();
+  const recovered = eventsContext.filter(
+    e => e.outcome === 'recovered'
+  ).length;
 
-    const targetEvent =
-      eventsContext.find(
-        e =>
-          e.customer_id.toLowerCase() ===
-          targetId
-      ) ||
-      eventsContext[0];
+  const stopped = eventsContext.filter(
+    e =>
+      e.outcome === 'stopped' ||
+      e.action_taken === 'escalate_human'
+  ).length;
 
-    if (targetEvent) {
+  const pending = eventsContext.filter(
+    e => e.outcome === 'pending'
+  ).length;
 
-      if (
-        targetEvent.action_taken ===
-          'escalate_human' ||
-        targetEvent.outcome === 'stopped'
-      ) {
-        return (
-          `Recovery attempts for ${targetEvent.customer_id} ` +
-          `were stopped because the failure reason was ` +
-          `'${targetEvent.reason_code || 'non_retryable'}'. ` +
-          `Safety gate rules escalated this case to a human ` +
-          `support agent to prevent invalid retry loops.`
-        );
-      }
+  const retryNow = eventsContext.filter(
+    e => e.action_taken === 'retry_now'
+  ).length;
 
-      if (
-        targetEvent.action_taken ===
-          'retry_now'
-      ) {
-        return (
-          `Account ${targetEvent.customer_id} encountered ` +
-          `'${targetEvent.reason_code}'. ` +
-          `The system executed an immediate charge retry ` +
-          `(outcome status: ${targetEvent.outcome}).`
-        );
-      }
+  const retry24h = eventsContext.filter(
+    e => e.action_taken === 'retry_in_24h'
+  ).length;
 
-      if (
-        targetEvent.action_taken ===
-          'send_discount_offer'
-      ) {
-        return (
-          `Account ${targetEvent.customer_id} experienced ` +
-          `'${targetEvent.reason_code}'. ` +
-          `A 10% discount recovery email was dispatched ` +
-          `to retain the customer.`
-        );
-      }
+  const discounts = eventsContext.filter(
+    e => e.action_taken === 'send_discount_offer'
+  ).length;
 
-      if (
-        targetEvent.action_taken ===
-          'retry_in_24h'
-      ) {
-        return (
-          `Account ${targetEvent.customer_id} experienced ` +
-          `'${targetEvent.reason_code}'. ` +
-          `A 24-hour delayed retry attempt was scheduled ` +
-          `by the decision engine.`
-        );
-      }
+  // ==========================================================
+  // CUSTOMER-SPECIFIC QUESTIONS
+  // ==========================================================
 
-      return (
-        `Account ${targetEvent.customer_id} audit record: ` +
-        `failure reason '${targetEvent.reason_code}'. ` +
-        `System executed action '${targetEvent.action_taken}' ` +
-        `with outcome status '${targetEvent.outcome}'.`
-      );
+  const customerMatch = q.match(/cust_\d+/i);
+
+  if (customerMatch) {
+    const targetId = customerMatch[0].toLowerCase();
+
+    const customerEvents = eventsContext.filter(
+      e =>
+        e.customer_id &&
+        e.customer_id.toLowerCase() === targetId
+    );
+
+    if (customerEvents.length === 0) {
+      return `No audit events were found for ${targetId}.`;
     }
-  }
 
+    const latest =
+      customerEvents[customerEvents.length - 1];
 
-  // ----------------------------------------------------------
-  // Payment/failure queries
-  // ----------------------------------------------------------
+    const reasons = [
+      ...new Set(
+        customerEvents
+          .map(e => e.reason_code)
+          .filter(Boolean)
+      )
+    ];
 
-  if (
-    q.includes('payment') ||
-    q.includes('fail') ||
-    q.includes('decline') ||
-    q.includes('card')
-  ) {
-    const reasons =
-      eventsContext
-        .map(e => e.reason_code)
-        .filter(Boolean);
-
-    const topReasons =
-      [...new Set(reasons)]
-        .slice(0, 3)
-        .join(', ');
+    const actions = [
+      ...new Set(
+        customerEvents
+          .map(e => e.action_taken)
+          .filter(Boolean)
+      )
+    ];
 
     return (
-      `Payment failures analyzed across recent transactions ` +
-      `show primary root causes: ` +
-      `${topReasons || 'insufficient funds and card expiration'}. ` +
-      `Non-retryable cases are immediately safety-gated ` +
-      `to human support.`
+      `${targetId} has ${customerEvents.length} recorded audit event(s). ` +
+      `Failure reason(s): ${reasons.join(', ') || 'not recorded'}. ` +
+      `Actions taken: ${actions.join(', ') || 'none recorded'}. ` +
+      `Latest outcome: ${latest.outcome || 'unknown'}.`
     );
   }
 
+  // ==========================================================
+  // FRAUD / SUSPICIOUS ACTIVITY QUESTIONS
+  // ==========================================================
 
-  // ----------------------------------------------------------
-  // Retry/gate queries
-  // ----------------------------------------------------------
+  if (
+    q.includes('fraud') ||
+    q.includes('suspicious') ||
+    q.includes('scam') ||
+    q.includes('risk') ||
+    q.includes('abnormal') ||
+    q.includes('unusual')
+  ) {
+    const customerAttempts = {};
+
+    eventsContext.forEach(e => {
+      if (!e.customer_id) return;
+
+      if (!customerAttempts[e.customer_id]) {
+        customerAttempts[e.customer_id] = 0;
+      }
+
+      customerAttempts[e.customer_id]++;
+    });
+
+    const repeatedCustomers = Object.entries(
+      customerAttempts
+    )
+      .filter(([_, count]) => count >= 2)
+      .sort((a, b) => b[1] - a[1]);
+
+    const stoppedCustomers = [
+      ...new Set(
+        eventsContext
+          .filter(
+            e =>
+              e.outcome === 'stopped' ||
+              e.action_taken === 'escalate_human'
+          )
+          .map(e => e.customer_id)
+          .filter(Boolean)
+      )
+    ];
+
+    return (
+      `Potential fraud or suspicious activity should be identified by looking for ` +
+      `repeated recovery attempts, abnormal failure patterns, repeated activity ` +
+      `on the same customer, and cases that trigger safety-gate escalation. ` +
+      `In the current ${total}-event audit context, ${repeatedCustomers.length} ` +
+      `customer(s) have multiple recorded events and ${stoppedCustomers.length} ` +
+      `customer(s) were stopped or escalated. These are risk indicators, not proof ` +
+      `of fraud, and should be reviewed before taking enforcement action.`
+    );
+  }
+
+  // ==========================================================
+  // PAYMENT / FAILURE QUESTIONS
+  // ==========================================================
+
+  if (
+    q.includes('payment') ||
+    q.includes('failure') ||
+    q.includes('failed') ||
+    q.includes('decline') ||
+    q.includes('card') ||
+    q.includes('reason')
+  ) {
+    const reasonCounts = {};
+
+    eventsContext.forEach(e => {
+      if (!e.reason_code) return;
+
+      reasonCounts[e.reason_code] =
+        (reasonCounts[e.reason_code] || 0) + 1;
+    });
+
+    const topReasons = Object.entries(reasonCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([reason, count]) => `${reason} (${count})`);
+
+    return (
+      `Across the ${total} recent audit events, the main recorded ` +
+      `payment failure reasons are ${topReasons.join(', ') || 'not available'}. ` +
+      `${stopped} case(s) were stopped or escalated rather than continuing ` +
+      `automatic recovery.`
+    );
+  }
+
+  // ==========================================================
+  // RETRY QUESTIONS
+  // ==========================================================
 
   if (
     q.includes('retry') ||
     q.includes('attempt') ||
-    q.includes('gate') ||
-    q.includes('rule')
+    q.includes('again')
   ) {
-    const retriedCount =
-      eventsContext.filter(
-        e =>
-          e.action_taken ===
-            'retry_now' ||
-          e.action_taken ===
-            'retry_in_24h'
-      ).length;
-
-    const gatedCount =
-      eventsContext.filter(
-        e =>
-          e.action_taken ===
-            'escalate_human' ||
-          e.outcome === 'stopped'
-      ).length;
-
     return (
-      `Retry audit breakdown: ${retriedCount} transactions ` +
-      `were approved for retries, while ${gatedCount} ` +
-      `transactions were blocked by safety rules to protect ` +
-      `customer accounts.`
+      `In the ${total} recent audit events, ${retryNow} ` +
+      `were assigned immediate retries and ${retry24h} ` +
+      `were scheduled for a 24-hour retry. ` +
+      `${stopped} case(s) were stopped or escalated by the recovery safety rules.`
     );
   }
 
+  // ==========================================================
+  // SAFETY / ESCALATION QUESTIONS
+  // ==========================================================
 
-  // ----------------------------------------------------------
-  // Discount queries
-  // ----------------------------------------------------------
+  if (
+    q.includes('safety') ||
+    q.includes('escalat') ||
+    q.includes('gate') ||
+    q.includes('blocked') ||
+    q.includes('stop')
+  ) {
+    return (
+      `The recovery safety layer stopped or escalated ${stopped} ` +
+      `of the ${total} recent audit events. These cases are separated from ` +
+      `automatic retries to prevent unsafe or repeated recovery attempts.`
+    );
+  }
+
+  // ==========================================================
+  // DISCOUNT QUESTIONS
+  // ==========================================================
 
   if (
     q.includes('discount') ||
-    q.includes('nudge') ||
-    q.includes('offer')
+    q.includes('offer') ||
+    q.includes('promotion')
   ) {
-    const discountCount =
-      eventsContext.filter(
-        e =>
-          e.action_taken ===
-          'send_discount_offer'
-      ).length;
-
     return (
-      `Discount campaigns: ${discountCount} accounts ` +
-      `received 10% promotional retention offers to recover ` +
-      `subscription payments.`
+      `${discounts} of the ${total} recent audit events resulted in a ` +
+      `discount offer. The recovery policy uses discounts as a retention ` +
+      `mechanism rather than as a default response to every failure.`
     );
   }
 
+  // ==========================================================
+  // PERFORMANCE / SUMMARY QUESTIONS
+  // ==========================================================
 
-  // ----------------------------------------------------------
-  // Default summary
-  // ----------------------------------------------------------
+  if (
+    q.includes('summary') ||
+    q.includes('performance') ||
+    q.includes('successful') ||
+    q.includes('recovery') ||
+    q.includes('recover')
+  ) {
+    return (
+      `Audit performance across the ${total} recent events: ` +
+      `${recovered} recovered, ${stopped} stopped or escalated, ` +
+      `${pending} pending, ${retryNow} immediate retries, ` +
+      `${retry24h} delayed retries, and ${discounts} discount offers.`
+    );
+  }
 
-  const total =
-    eventsContext.length;
-
-  const recovered =
-    eventsContext.filter(
-      e => e.outcome === 'recovered'
-    ).length;
-
-  const stopped =
-    eventsContext.filter(
-      e => e.outcome === 'stopped'
-    ).length;
-
-  const pending =
-    eventsContext.filter(
-      e => e.outcome === 'pending'
-    ).length;
+  // ==========================================================
+  // DEFAULT — STILL ANSWER THE QUESTION
+  // ==========================================================
 
   return (
-    `Audit Ledger Summary (${total} events analyzed): ` +
-    `${recovered} accounts successfully rescued, ` +
-    `${stopped} stopped/escalated via safety gates, and ` +
-    `${pending} pending retry scheduling.`
+    `I analyzed ${total} recent audit events. ` +
+    `The available audit data contains customer IDs, failure reasons, ` +
+    `recovery actions, attempt numbers, and outcomes. ` +
+    `For a more specific answer, ask about fraud indicators, payment failures, ` +
+    `retry decisions, safety gates, customer accounts, or recovery performance.`
   );
 }
-
 
 // ============================================================
 // RESET DEMO
