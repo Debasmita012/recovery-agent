@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 require('dotenv').config();
+const Razorpay = require('razorpay');
 
 const { pool, initSchema } = require('./db');
 const { handleFailure } = require('./handler');
@@ -12,10 +13,71 @@ const { startRetryCron } = require('./cron');
 const anthropicClient = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || 'dummy'
 });
-
+const razorpayClient = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
 const app = express();
 
+// ============================================================
+// RAZORPAY TEST ORDER
+// ============================================================
 
+app.post('/create-test-order', async (req, res) => {
+  try {
+    const {
+      customerId = `cust_${Date.now()}`,
+      amount = 500,
+      email = `${customerId}@example.com`,
+    } = req.body || {};
+
+    const amountInPaise =
+      Math.round(Number(amount) * 100);
+
+    if (
+      !Number.isFinite(amountInPaise) ||
+      amountInPaise < 1000
+    ) {
+      return res.status(400).json({
+        error:
+          'Amount must be at least ₹10.'
+      });
+    }
+
+    const order =
+      await razorpayClient.orders.create({
+        amount: amountInPaise,
+        currency: 'INR',
+        receipt:
+          `rcpt_${Date.now()}`,
+        notes: {
+          customer_id: customerId,
+          email,
+          source: 'shimmer_test_recovery',
+        },
+      });
+
+    res.json({
+      success: true,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      customerId,
+      email,
+    });
+
+  } catch (err) {
+    console.error(
+      '[create-test-order]',
+      err
+    );
+
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
 // ============================================================
 // EXPRESS CONFIGURATION
 // ============================================================
@@ -27,7 +89,15 @@ app.use(express.json({
 }));
 
 app.use(express.static(path.join(__dirname, 'public')));
-
+app.get('/test-payment', (req, res) => {
+  res.sendFile(
+    path.join(
+      __dirname,
+      'public',
+      'test-payment.html'
+    )
+  );
+});
 
 // ============================================================
 // HOME PAGE

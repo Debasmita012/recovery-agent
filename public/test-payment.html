@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Shimmer - Razorpay Test Payment</title>
+
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 60px auto;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    label {
+      display: block;
+      margin-top: 15px;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    button {
+      margin-top: 25px;
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    #status {
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 6px;
+      background: #f3f3f3;
+      min-height: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Shimmer Test Payment</h1>
+
+  <div class="subtitle">
+    Razorpay Test Mode — no real money is charged.
+  </div>
+
+  <label for="customerId">
+    Customer ID
+  </label>
+
+  <input
+    id="customerId"
+    value="cust_1001"
+  >
+
+  <label for="email">
+    Email
+  </label>
+
+  <input
+    id="email"
+    value="customer1001@example.com"
+  >
+
+  <label for="amount">
+    Amount (₹)
+  </label>
+
+  <input
+    id="amount"
+    type="number"
+    value="500"
+    min="10"
+  >
+
+  <button onclick="startPayment()">
+    Pay ₹500 in Test Mode
+  </button>
+
+  <div id="status">
+    Ready.
+  </div>
+
+
+  <script>
+
+    async function startPayment() {
+
+      const customerId =
+        document
+          .getElementById('customerId')
+          .value
+          .trim();
+
+      const email =
+        document
+          .getElementById('email')
+          .value
+          .trim();
+
+      const amount =
+        Number(
+          document
+            .getElementById('amount')
+            .value
+        );
+
+
+      const status =
+        document.getElementById('status');
+
+      status.textContent =
+        'Creating Razorpay test order...';
+
+
+      try {
+
+        const response =
+          await fetch(
+            '/create-test-order',
+            {
+              method: 'POST',
+
+              headers: {
+                'Content-Type':
+                  'application/json'
+              },
+
+              body: JSON.stringify({
+                customerId,
+                email,
+                amount
+              })
+            }
+          );
+
+
+        const data =
+          await response.json();
+
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ||
+            'Failed to create order'
+          );
+        }
+
+
+        const options = {
+
+          key: data.keyId,
+
+          amount: data.amount,
+
+          currency: data.currency,
+
+          name: 'Shimmer',
+
+          description:
+            'AI Revenue Recovery Test',
+
+          order_id:
+            data.orderId,
+
+          prefill: {
+            email: email
+          },
+
+          notes: {
+            customer_id:
+              customerId
+          },
+
+          theme: {
+            color: '#3399cc'
+          },
+
+          handler: function (response) {
+
+            status.textContent =
+              'Payment completed. Waiting for Razorpay webhook...';
+
+            console.log(
+              'Razorpay success:',
+              response
+            );
+          },
+
+          modal: {
+            ondismiss: function () {
+
+              status.textContent =
+                'Checkout closed.';
+            }
+          }
+        };
+
+
+        const rzp =
+          new Razorpay(options);
+
+
+        rzp.on(
+          'payment.failed',
+          function (response) {
+
+            console.log(
+              'Razorpay payment failed:',
+              response
+            );
+
+            status.textContent =
+              'Payment failed. Check your Render logs and dashboard.';
+          }
+        );
+
+
+        rzp.open();
+
+      } catch (error) {
+
+        console.error(error);
+
+        status.textContent =
+          'Error: ' +
+          error.message;
+      }
+    }
+
+  </script>
+
+</body>
+</html>
