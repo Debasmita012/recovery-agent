@@ -1,1104 +1,1450 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shimmer — Autonomous Payment Recovery & Gating Intelligence</title>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
-
-<style>
-:root {
-  --bg-cream:#F8F3ED;
-  --card-light:#FFFFFF;
-  --card-border:#E8DFD5;
-  --card-dark:#2D221E;
-  --card-dark-surface:#3A2D28;
-  --text-dark:#2B211C;
-  --text-muted:#7C6C62;
-  --text-light:#F5EFE6;
-  --accent-gold:#C59B27;
-  --accent-gold-light:#F7F0DF;
-  --success-sage:#2E7D52;
-  --success-bg:#EAF5EE;
-  --stopped-rose:#A94442;
-  --stopped-bg:#FDF0ED;
-  --pending-amber:#B8860B;
-  --pending-bg:#FCF8EC;
-  --serif:'Playfair Display',Georgia,serif;
-  --sans:'Plus Jakarta Sans',-apple-system,sans-serif;
-  --mono:'IBM Plex Mono',monospace;
-}
-
-* {
-  box-sizing:border-box;
-  margin:0;
-  padding:0;
-}
-
-body {
-  font-family:var(--sans);
-  background:var(--bg-cream);
-  color:var(--text-dark);
-  line-height:1.5;
-  padding-bottom:60px;
-}
-
-.container {
-  max-width:1160px;
-  margin:0 auto;
-  padding:24px 20px;
-}
-
-/* NAV */
-nav {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:16px 28px;
-  background:rgba(255,255,255,.85);
-  backdrop-filter:blur(12px);
-  border:1px solid var(--card-border);
-  border-radius:40px;
-  margin-bottom:24px;
-  box-shadow:0 4px 20px rgba(45,34,30,.05);
-}
-
-.brand {
-  display:flex;
-  align-items:center;
-  gap:10px;
-  font-family:var(--serif);
-  font-size:22px;
-  font-weight:700;
-}
-
-.brand-sparkle {
-  width:28px;
-  height:28px;
-  background:var(--card-dark);
-  color:var(--accent-gold);
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:14px;
-}
-
-.nav-links {
-  display:flex;
-  gap:24px;
-  list-style:none;
-  font-size:13px;
-  font-weight:600;
-  color:var(--text-muted);
-}
-
-.nav-links a {
-  color:var(--text-muted);
-  text-decoration:none;
-}
-
-.nav-actions {
-  display:flex;
-  gap:10px;
-}
-
-button {
-  font-family:var(--sans);
-  font-weight:600;
-  font-size:13px;
-  padding:10px 20px;
-  border-radius:30px;
-  border:1px solid var(--card-border);
-  background:var(--card-light);
-  color:var(--text-dark);
-  cursor:pointer;
-  transition:.25s;
-}
-
-button:hover {
-  transform:translateY(-1px);
-  box-shadow:0 4px 12px rgba(45,34,30,.1);
-}
-
-.btn-primary {
-  background:var(--card-dark);
-  color:var(--text-light);
-  border:none;
-}
-
-.btn-danger {
-  background:var(--stopped-bg);
-  color:var(--stopped-rose);
-  border-color:rgba(169,68,66,.3);
-}
-
-/* HERO */
-.hero-card {
-  background:linear-gradient(135deg,#2D221E 0%,#1F1714 100%);
-  border-radius:24px;
-  padding:44px;
-  color:var(--text-light);
-  position:relative;
-  overflow:hidden;
-  margin-bottom:28px;
-  box-shadow:0 16px 36px rgba(45,34,30,.2);
-}
-
-.hero-card::after {
-  content:'';
-  position:absolute;
-  top:-50%;
-  right:-20%;
-  width:500px;
-  height:500px;
-  background:radial-gradient(
-    circle,
-    rgba(197,155,39,.18) 0%,
-    rgba(0,0,0,0) 70%
-  );
-  pointer-events:none;
-}
-
-.hero-content {
-  max-width:620px;
-  position:relative;
-  z-index:2;
-}
-
-.hero-tag {
-  font-size:12px;
-  font-weight:700;
-  text-transform:uppercase;
-  letter-spacing:2px;
-  color:var(--accent-gold);
-  margin-bottom:12px;
-  display:inline-block;
-}
-
-.hero-title {
-  font-family:var(--serif);
-  font-size:40px;
-  font-weight:600;
-  line-height:1.15;
-  margin-bottom:16px;
-  color:#fff;
-}
-
-.hero-desc {
-  font-size:14px;
-  color:#D3C5B9;
-  margin-bottom:28px;
-  line-height:1.6;
-}
-
-.hero-badge-container {
-  position:absolute;
-  right:44px;
-  bottom:44px;
-  background:rgba(255,255,255,.12);
-  backdrop-filter:blur(16px);
-  border:1px solid rgba(255,255,255,.2);
-  border-radius:16px;
-  padding:16px 24px;
-  display:flex;
-  align-items:center;
-  gap:16px;
-  z-index:2;
-}
-
-.hero-badge-num {
-  font-family:var(--mono);
-  font-size:24px;
-  font-weight:700;
-  color:var(--accent-gold);
-}
-
-.hero-badge-text {
-  font-size:12px;
-  color:#E8DFD5;
-}
-
-/* KPI */
-.kpi-grid {
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:16px;
-  margin-bottom:28px;
-}
-
-.kpi-card {
-  background:#fff;
-  border:1px solid var(--card-border);
-  border-radius:18px;
-  padding:22px;
-}
-
-.kpi-card.primary {
-  background:linear-gradient(135deg,#2D221E,#40302A);
-  color:#fff;
-  border-color:var(--accent-gold);
-}
-
-.kpi-label {
-  font-size:10px;
-  font-weight:700;
-  text-transform:uppercase;
-  letter-spacing:1.2px;
-  color:var(--text-muted);
-}
-
-.kpi-card.primary .kpi-label {
-  color:#D3C5B9;
-}
-
-.kpi-value {
-  font-family:var(--mono);
-  font-size:30px;
-  font-weight:700;
-  margin-top:8px;
-}
-
-.kpi-card.primary .kpi-value {
-  color:var(--accent-gold);
-}
-
-.kpi-meta {
-  font-size:11px;
-  color:var(--text-muted);
-  margin-top:6px;
-}
-
-.kpi-card.primary .kpi-meta {
-  color:#D3C5B9;
-}
-
-/* GRID */
-.dashboard-grid {
-  display:grid;
-  grid-template-columns:1.15fr .85fr;
-  gap:20px;
-  margin-bottom:28px;
-}
-
-.mini-card,
-.chart-card,
-.ai-card,
-.table-card,
-#auditPanel {
-  background:#fff;
-  border:1px solid var(--card-border);
-  border-radius:20px;
-}
-
-.mini-card {
-  padding:24px;
-}
-
-.mini-title,
-.section-heading {
-  font-family:var(--serif);
-  font-size:22px;
-  font-weight:600;
-}
-
-.mini-subtitle {
-  font-size:12px;
-  color:var(--text-muted);
-  margin-bottom:18px;
-}
-
-/* FUNNEL */
-.funnel-row {
-  margin:14px 0;
-}
-
-.funnel-head {
-  display:flex;
-  justify-content:space-between;
-  font-size:12px;
-  font-weight:700;
-  margin-bottom:7px;
-}
-
-.funnel-track {
-  height:12px;
-  background:#F0E8DF;
-  border-radius:20px;
-  overflow:hidden;
-}
-
-.funnel-fill {
-  height:100%;
-  border-radius:20px;
-}
-
-.funnel-total {
-  margin-top:18px;
-  padding-top:16px;
-  border-top:1px solid var(--card-border);
-  display:flex;
-  justify-content:space-between;
-  font-family:var(--mono);
-  font-size:13px;
-}
-
-/* FAILURE INTELLIGENCE */
-.reason-list {
-  display:grid;
-  gap:12px;
-}
-
-.reason-item {
-  display:grid;
-  grid-template-columns:135px 1fr 45px;
-  gap:10px;
-  align-items:center;
-  font-size:11px;
-}
-
-.reason-name {
-  font-weight:600;
-  text-transform:capitalize;
-}
-
-.reason-track {
-  height:9px;
-  background:#F0E8DF;
-  border-radius:20px;
-  overflow:hidden;
-}
-
-.reason-fill {
-  height:100%;
-  background:var(--accent-gold);
-  border-radius:20px;
-}
-
-.reason-count {
-  font-family:var(--mono);
-  text-align:right;
-  font-weight:700;
-}
-
-/* DECISIONS */
-.decision-grid {
-  display:grid;
-  grid-template-columns:repeat(5,1fr);
-  gap:10px;
-  margin-top:16px;
-}
-
-.decision-box {
-  border:1px solid var(--card-border);
-  border-radius:12px;
-  padding:13px;
-  text-align:center;
-  background:var(--bg-cream);
-}
-
-.decision-num {
-  font-family:var(--mono);
-  font-size:21px;
-  font-weight:700;
-}
-
-.decision-label {
-  font-size:9px;
-  text-transform:uppercase;
-  letter-spacing:.7px;
-  color:var(--text-muted);
-  margin-top:4px;
-}
-
-/* AI */
-.ai-card {
-  padding:28px;
-  margin-bottom:28px;
-}
-
-.ai-header {
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:16px;
-}
-
-.ai-title {
-  font-family:var(--serif);
-  font-size:22px;
-  font-weight:600;
-}
-
-.ai-chips {
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  margin-bottom:16px;
-}
-
-.ai-chip {
-  font-size:12px;
-  background:var(--bg-cream);
-  color:var(--text-dark);
-  border:1px solid var(--card-border);
-  padding:6px 14px;
-  border-radius:20px;
-  cursor:pointer;
-}
-
-.ai-input-wrapper {
-  display:flex;
-  gap:12px;
-  margin-bottom:16px;
-}
-
-.ai-input-wrapper input {
-  flex:1;
-  font-family:var(--sans);
-  background:var(--bg-cream);
-  border:1px solid var(--card-border);
-  border-radius:30px;
-  padding:12px 20px;
-  font-size:14px;
-}
-
-.ai-response-box {
-  background:var(--bg-cream);
-  border-left:4px solid var(--accent-gold);
-  border-radius:12px;
-  padding:16px 20px;
-  font-size:14px;
-  line-height:1.6;
-  display:none;
-}
-
-/* CHART */
-.chart-card {
-  padding:24px;
-  margin-bottom:28px;
-}
-
-/* LIVE FEED */
-.live-feed {
-  display:grid;
-  gap:10px;
-  max-height:235px;
-  overflow:auto;
-}
-
-.feed-item {
-  display:flex;
-  gap:10px;
-  align-items:flex-start;
-  padding:10px 0;
-  border-bottom:1px solid #F0E8DF;
-  font-size:12px;
-}
-
-.feed-dot {
-  width:8px;
-  height:8px;
-  border-radius:50%;
-  margin-top:5px;
-  background:var(--success-sage);
-  flex:0 0 auto;
-}
-
-.feed-dot.stop {
-  background:var(--stopped-rose);
-}
-
-.feed-main {
-  flex:1;
-}
-
-.feed-time {
-  color:var(--text-muted);
-  font-size:10px;
-}
-
-/* TABLE */
-.table-card {
-  padding:28px;
-}
-
-table {
-  width:100%;
-  border-collapse:collapse;
-  margin-top:12px;
-}
-
-th {
-  text-align:left;
-  padding:12px;
-  border-bottom:1px solid var(--card-border);
-  font-size:11px;
-  font-weight:700;
-  color:var(--text-muted);
-  text-transform:uppercase;
-  letter-spacing:1px;
-}
-
-td {
-  padding:16px 12px;
-  border-bottom:1px solid #F0E8DF;
-  font-size:14px;
-}
-
-tbody tr {
-  transition:.2s;
-  cursor:pointer;
-}
-
-tbody tr:hover {
-  background:var(--bg-cream);
-}
-
-.mono-val {
-  font-family:var(--mono);
-  font-weight:600;
-}
-
-/* STATUS */
-.pill-badge {
-  font-size:12px;
-  font-weight:700;
-  padding:4px 14px;
-  border-radius:20px;
-  display:inline-block;
-  text-transform:uppercase;
-}
-
-.pill-recovered {
-  background:var(--success-bg);
-  color:var(--success-sage);
-  border:1px solid rgba(46,125,82,.3);
-}
-
-.pill-stopped {
-  background:var(--stopped-bg);
-  color:var(--stopped-rose);
-  border:1px solid rgba(169,68,66,.3);
-}
-
-.pill-pending {
-  background:var(--pending-bg);
-  color:var(--pending-amber);
-  border:1px solid rgba(184,134,11,.3);
-}
-
-/* AUDIT */
-#auditPanel {
-  padding:32px;
-  margin-top:32px;
-  display:none;
-  box-shadow:0 12px 32px rgba(45,34,30,.1);
-}
-
-.audit-highlight {
-  background:linear-gradient(135deg,#2D221E,#3A2D28);
-  color:#fff;
-  border-radius:16px;
-  padding:18px;
-  margin-bottom:18px;
-}
-
-.audit-highlight-title {
-  color:var(--accent-gold);
-  font-size:11px;
-  font-weight:700;
-  text-transform:uppercase;
-  letter-spacing:1px;
-}
-
-.audit-highlight-text {
-  margin-top:7px;
-  font-size:13px;
-  line-height:1.6;
-  color:#F5EFE6;
-}
-
-.gating-container {
-  background:var(--card-dark);
-  color:var(--text-light);
-  border-radius:14px;
-  padding:16px 20px;
-  margin-top:10px;
-  font-size:13px;
-}
-
-.status-tag {
-  font-family:var(--mono);
-  font-size:10px;
-  font-weight:700;
-  padding:2px 8px;
-  border-radius:4px;
-  text-transform:uppercase;
-}
-
-.status-tag.SELECTED {
-  background:rgba(46,125,82,.3);
-  color:#5CD08B;
-}
-
-.status-tag.BLOCKED {
-  background:rgba(169,68,66,.3);
-  color:#FF9B99;
-}
-
-.status-tag.REJECTED {
-  background:rgba(197,155,39,.3);
-  color:#F7D57F;
-}
-
-/* SEARCH */
-.search-box {
-  width:100%;
-  margin-top:14px;
-  padding:11px 15px;
-  border:1px solid var(--card-border);
-  border-radius:12px;
-  background:var(--bg-cream);
-  font-family:var(--sans);
-}
-
-.search-box:focus {
-  outline:none;
-  border-color:var(--accent-gold);
-  background:#fff;
-}
-
-.status-dot {
-  display:inline-block;
-  width:7px;
-  height:7px;
-  border-radius:50%;
-  background:var(--success-sage);
-  margin-right:7px;
-}
-
-@media(max-width:900px) {
-  .kpi-grid,
-  .dashboard-grid {
-    grid-template-columns:1fr 1fr;
-  }
-
-  .decision-grid {
-    grid-template-columns:repeat(3,1fr);
-  }
-}
-
-@media(max-width:600px) {
-  .kpi-grid,
-  .dashboard-grid {
-    grid-template-columns:1fr;
-  }
-
-  .decision-grid {
-    grid-template-columns:1fr 1fr;
-  }
-
-  .hero-card {
-    padding:30px 24px 120px;
-  }
-
-  .hero-badge-container {
-    left:24px;
-    right:24px;
-    bottom:24px;
-  }
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Shimmer — AI Revenue Recovery</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  >
+
+  <style>
+
+    /* =========================================================
+       RESET
+    ========================================================= */
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Plus Jakarta Sans", sans-serif;
+      background: #f8f3ed;
+      color: #2b211c;
+      line-height: 1.5;
+      padding-bottom: 60px;
+    }
+
+    button,
+    input {
+      font-family: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    /* =========================================================
+       LAYOUT
+    ========================================================= */
+
+    .container {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    /* =========================================================
+       NAVBAR
+    ========================================================= */
+
+    nav {
+      margin: 20px 0;
+      padding: 14px 20px;
+      background: rgba(255,255,255,.94);
+      border: 1px solid #e8dfd5;
+      border-radius: 18px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+
+      box-shadow: 0 8px 25px rgba(45,34,30,.06);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      font-family: "Playfair Display", serif;
+      font-size: 23px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      background: #2d221e;
+      color: #c59b27;
+      font-size: 16px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 22px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: #7c6c62;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .nav-links a:hover {
+      color: #2b211c;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    /* =========================================================
+       BUTTONS
+    ========================================================= */
+
+    .btn {
+      border: 1px solid #e8dfd5;
+      background: white;
+      color: #2b211c;
+
+      padding: 10px 15px;
+      border-radius: 10px;
+
+      font-size: 12px;
+      font-weight: 700;
+
+      transition: .2s;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 5px 15px rgba(45,34,30,.08);
+    }
+
+    .btn-primary {
+      background: #2d221e;
+      color: #fff;
+      border-color: #2d221e;
+    }
+
+    .btn-gold {
+      background: #c59b27;
+      color: white;
+      border-color: #c59b27;
+    }
+
+    .btn-danger {
+      background: #fdf0ed;
+      color: #a94442;
+      border-color: #e9c5c0;
+    }
+
+    /* =========================================================
+       HERO
+    ========================================================= */
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+
+      background:
+        radial-gradient(
+          circle at 85% 20%,
+          rgba(197,155,39,.18),
+          transparent 30%
+        ),
+        linear-gradient(135deg,#2d221e,#1f1714);
+
+      color: white;
+      border-radius: 24px;
+      padding: 42px;
+      margin-bottom: 22px;
+
+      box-shadow: 0 18px 40px rgba(45,34,30,.18);
+    }
+
+    .hero-tag {
+      display: inline-block;
+
+      color: #c59b27;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+
+      margin-bottom: 12px;
+    }
+
+    .hero h1 {
+      max-width: 720px;
+
+      font-family: "Playfair Display", serif;
+      font-size: clamp(32px, 5vw, 48px);
+      line-height: 1.08;
+      font-weight: 600;
+
+      margin-bottom: 16px;
+    }
+
+    .hero p {
+      max-width: 720px;
+
+      color: #d3c5b9;
+      font-size: 14px;
+      line-height: 1.7;
+
+      margin-bottom: 24px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .hero-badge {
+      position: absolute;
+      right: 35px;
+      bottom: 35px;
+
+      padding: 15px 20px;
+
+      background: rgba(255,255,255,.09);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 14px;
+
+      backdrop-filter: blur(10px);
+    }
+
+    .hero-badge-value {
+      font-family: "IBM Plex Mono", monospace;
+      color: #c59b27;
+      font-size: 25px;
+      font-weight: 700;
+    }
+
+    .hero-badge-label {
+      color: #d3c5b9;
+      font-size: 10px;
+      margin-top: 3px;
+    }
+
+    /* =========================================================
+       KPI
+    ========================================================= */
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .kpi {
+      background: white;
+      border: 1px solid #e8dfd5;
+      border-radius: 17px;
+      padding: 20px;
+    }
+
+    .kpi.primary {
+      background: linear-gradient(135deg,#2d221e,#40302a);
+      border-color: #c59b27;
+      color: white;
+    }
+
+    .kpi-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #7c6c62;
+    }
+
+    .kpi.primary .kpi-label {
+      color: #d3c5b9;
+    }
+
+    .kpi-value {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 28px;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+
+    .kpi.primary .kpi-value {
+      color: #c59b27;
+    }
+
+    .kpi-meta {
+      margin-top: 5px;
+      font-size: 10px;
+      color: #7c6c62;
+    }
+
+    .kpi.primary .kpi-meta {
+      color: #d3c5b9;
+    }
+
+    /* =========================================================
+       CARDS
+    ========================================================= */
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #e8dfd5;
+      border-radius: 19px;
+      padding: 24px;
+    }
+
+    .card-title {
+      font-family: "Playfair Display", serif;
+      font-size: 21px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .card-subtitle {
+      font-size: 11px;
+      color: #7c6c62;
+      margin-bottom: 18px;
+    }
+
+    /* =========================================================
+       FUNNEL
+    ========================================================= */
+
+    .funnel-row {
+      margin-bottom: 18px;
+    }
+
+    .funnel-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+
+      font-size: 11px;
+      font-weight: 700;
+
+      margin-bottom: 7px;
+    }
+
+    .funnel-track {
+      height: 11px;
+      background: #f0e8df;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .funnel-fill {
+      height: 100%;
+      border-radius: 20px;
+      transition: width .5s;
+    }
+
+    .funnel-total {
+      border-top: 1px solid #e8dfd5;
+      padding-top: 15px;
+      margin-top: 5px;
+
+      display: flex;
+      justify-content: space-between;
+
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 12px;
+    }
+
+    /* =========================================================
+       FAILURE INTELLIGENCE
+    ========================================================= */
+
+    .reason-row {
+      display: grid;
+      grid-template-columns: 130px 1fr 35px;
+      gap: 10px;
+      align-items: center;
+
+      margin-bottom: 13px;
+
+      font-size: 11px;
+    }
+
+    .reason-name {
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+
+    .reason-track {
+      height: 8px;
+      background: #f0e8df;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .reason-fill {
+      height: 100%;
+      background: #c59b27;
+      border-radius: 20px;
+    }
+
+    .reason-count {
+      font-family: "IBM Plex Mono", monospace;
+      text-align: right;
+      font-weight: 700;
+    }
+
+    /* =========================================================
+       DECISIONS
+    ========================================================= */
+
+    .decision-grid {
+      display: grid;
+      grid-template-columns: repeat(5,1fr);
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    .decision {
+      background: #f8f3ed;
+      border: 1px solid #e8dfd5;
+      border-radius: 11px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .decision-number {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .decision-label {
+      color: #7c6c62;
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-top: 3px;
+    }
+
+    /* =========================================================
+       LIVE FEED
+    ========================================================= */
+
+    .live-feed {
+      max-height: 270px;
+      overflow-y: auto;
+    }
+
+    .feed-item {
+      display: flex;
+      gap: 10px;
+      padding: 11px 0;
+      border-bottom: 1px solid #f0e8df;
+      font-size: 11px;
+    }
+
+    .feed-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #2e7d52;
+      margin-top: 5px;
+      flex: 0 0 auto;
+    }
+
+    .feed-dot.pending {
+      background: #b8860b;
+    }
+
+    .feed-dot.stopped {
+      background: #a94442;
+    }
+
+    .feed-main {
+      flex: 1;
+    }
+
+    .feed-time {
+      color: #7c6c62;
+      font-size: 9px;
+      margin-top: 2px;
+    }
+
+    /* =========================================================
+       ECONOMICS
+    ========================================================= */
+
+    .economic-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 11px 0;
+      border-bottom: 1px solid #f0e8df;
+      font-size: 12px;
+    }
+
+    .economic-row strong {
+      font-family: "IBM Plex Mono", monospace;
+    }
+
+    .economic-total {
+      font-size: 15px;
+      padding-top: 15px;
+      border-bottom: none;
+    }
+
+    /* =========================================================
+       AI
+    ========================================================= */
+
+    .ai-card {
+      margin-bottom: 20px;
+    }
+
+    .ai-chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 13px;
+    }
+
+    .ai-chip {
+      background: #f8f3ed;
+      border: 1px solid #e8dfd5;
+      border-radius: 20px;
+      padding: 7px 12px;
+
+      font-size: 10px;
+      font-weight: 600;
+      color: #2b211c;
+    }
+
+    .ai-input {
+      display: flex;
+      gap: 10px;
+    }
+
+    .ai-input input {
+      flex: 1;
+
+      border: 1px solid #e8dfd5;
+      background: #f8f3ed;
+      border-radius: 25px;
+
+      padding: 12px 16px;
+      outline: none;
+    }
+
+    .ai-input input:focus {
+      border-color: #c59b27;
+      background: white;
+    }
+
+    .ai-response {
+      display: none;
+
+      margin-top: 14px;
+      padding: 15px;
+
+      background: #f8f3ed;
+      border-left: 4px solid #c59b27;
+      border-radius: 10px;
+
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    /* =========================================================
+       LEDGER
+    ========================================================= */
+
+    .ledger-card {
+      margin-bottom: 20px;
+    }
+
+    .search {
+      width: 100%;
+
+      margin: 12px 0 15px;
+
+      border: 1px solid #e8dfd5;
+      background: #f8f3ed;
+      border-radius: 10px;
+
+      padding: 11px 14px;
+      outline: none;
+    }
+
+    .search:focus {
+      background: white;
+      border-color: #c59b27;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      padding: 11px;
+      border-bottom: 1px solid #e8dfd5;
+
+      text-align: left;
+
+      color: #7c6c62;
+      font-size: 9px;
+      font-weight: 700;
+
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    td {
+      padding: 14px 11px;
+      border-bottom: 1px solid #f0e8df;
+
+      font-size: 11px;
+    }
+
+    tbody tr {
+      cursor: pointer;
+    }
+
+    tbody tr:hover {
+      background: #faf5ef;
+    }
+
+    .mono {
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 600;
+    }
+
+    /* =========================================================
+       STATUS
+    ========================================================= */
+
+    .status {
+      display: inline-block;
+
+      padding: 4px 10px;
+      border-radius: 20px;
+
+      font-size: 9px;
+      font-weight: 700;
+
+      text-transform: uppercase;
+    }
+
+    .status-recovered {
+      color: #2e7d52;
+      background: #eaf5ee;
+      border: 1px solid #c7e5d3;
+    }
+
+    .status-pending {
+      color: #b8860b;
+      background: #fcf8ec;
+      border: 1px solid #eadcae;
+    }
+
+    .status-stopped {
+      color: #a94442;
+      background: #fdf0ed;
+      border: 1px solid #e9c5c0;
+    }
+
+    /* =========================================================
+       AUDIT
+    ========================================================= */
+
+    #auditPanel {
+      display: none;
+      margin-bottom: 20px;
+    }
+
+    .audit-highlight {
+      background: linear-gradient(135deg,#2d221e,#3a2d28);
+      color: white;
+
+      border-radius: 13px;
+      padding: 17px;
+      margin-bottom: 17px;
+    }
+
+    .audit-highlight-title {
+      color: #c59b27;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .audit-highlight-text {
+      margin-top: 6px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .audit-table {
+      overflow-x: auto;
+    }
+
+    .audit-table table {
+      min-width: 800px;
+    }
+
+    /* =========================================================
+       EMPTY / ERROR
+    ========================================================= */
+
+    .empty {
+      padding: 25px;
+      text-align: center;
+      color: #7c6c62;
+      font-size: 12px;
+    }
+
+    .error-box {
+      background: #fdf0ed;
+      color: #a94442;
+      border: 1px solid #e9c5c0;
+      border-radius: 12px;
+      padding: 15px;
+      font-size: 12px;
+    }
+
+    /* =========================================================
+       RESPONSIVE
+    ========================================================= */
+
+    @media (max-width: 950px) {
+
+      .nav-links {
+        display: none;
+      }
+
+      .hero-badge {
+        position: static;
+        display: inline-block;
+        margin-top: 25px;
+      }
+
+      .kpi-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .decision-grid {
+        grid-template-columns: repeat(3,1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+
+      .container {
+        width: min(100% - 20px,1180px);
+      }
+
+      nav {
+        padding: 12px;
+      }
+
+      .brand {
+        font-size: 19px;
+      }
+
+      .nav-actions .btn {
+        padding: 8px 10px;
+        font-size: 10px;
+      }
+
+      .hero {
+        padding: 28px 22px;
+      }
+
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .decision-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .ai-input {
+        flex-direction: column;
+      }
+
+      .reason-row {
+        grid-template-columns: 100px 1fr 30px;
+      }
+    }
+
+  </style>
 </head>
+
 
 <body>
 
 <div class="container">
 
-<nav>
-  <div class="brand">
-    <div class="brand-sparkle">✨</div>
-    Shimmer
-  </div>
+  <!-- =======================================================
+       NAVIGATION
+  ======================================================== -->
 
-  <ul class="nav-links">
-    <li><a href="#metrics">Overview</a></li>
-    <li><a href="#ai-assistant">AI Intelligence</a></li>
-    <li><a href="#ledger">Recovery Ledger</a></li>
-  </ul>
+  <nav>
 
-  <div class="nav-actions">
-  <button onclick="loadAll()">↻ Refresh</button>
+    <div class="brand">
+      <div class="brand-icon">✦</div>
+      Shimmer
+    </div>
 
-  <button
-    class="btn-primary"
-    onclick="window.location.href='/test-payment'">
-    ₹ Test Payment
-  </button>
+    <ul class="nav-links">
+      <li>
+        <a href="#overview">Overview</a>
+      </li>
 
-  <button class="btn-danger" onclick="resetDemo()">
-    Reset Demo
-  </button>
-</div>
+      <li>
+        <a href="#ai">AI Intelligence</a>
+      </li>
 
-<!-- HERO -->
-<div class="hero-card">
+      <li>
+        <a href="#ledger">Recovery Ledger</a>
+      </li>
+    </ul>
 
-  <div class="hero-content">
+    <div class="nav-actions">
+
+      <button
+        class="btn"
+        onclick="loadAll()">
+        ↻ Refresh
+      </button>
+
+      <button
+        class="btn btn-gold"
+        onclick="openTestPayment()">
+        ₹ Test Payment
+      </button>
+
+      <button
+        class="btn btn-danger"
+        onclick="resetDemo()">
+        Reset Demo
+      </button>
+
+    </div>
+
+  </nav>
+
+
+  <!-- =======================================================
+       HERO
+  ======================================================== -->
+
+  <section class="hero" id="overview">
 
     <span class="hero-tag">
-      ✨ SHIMMER RECOVERY ENGINE
+      ✦ SHIMMER RECOVERY ENGINE
     </span>
 
-    <h1 class="hero-title">
+    <h1>
       Autonomous Payment Recovery Intelligence
     </h1>
 
-    <p class="hero-desc">
-      An autonomous financial decision engine that rescues failed subscription revenue using AI reasoning, deterministic safety gates, automated retry workflows and explainable audit trails.
+    <p>
+      Shimmer detects failed payments, classifies the failure,
+      chooses a bounded recovery action, applies deterministic
+      safety gates, and records every decision in an explainable
+      audit trail.
     </p>
 
-    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <div class="hero-actions">
 
-  <button
-    class="btn-primary"
-    onclick="window.location.href='/test-payment'">
-    ₹ Run Razorpay Test Payment
-  </button>
+      <button
+        class="btn btn-gold"
+        onclick="openTestPayment()">
+        ₹ Run Razorpay Test Payment
+      </button>
 
-  <button
-    onclick="document.getElementById('ledger').scrollIntoView({behavior:'smooth'})">
-    Explore Recovery Ledger →
-  </button>
+      <button
+        class="btn"
+        onclick="document.getElementById('ledger').scrollIntoView({behavior:'smooth'})">
+        Explore Recovery Ledger →
+      </button>
 
-</div>
-
-  </div>
-
-  <div class="hero-badge-container">
-
-    <div class="hero-badge-num" id="heroNetValue">
-      ₹0
     </div>
 
-    <div class="hero-badge-text">
-      <strong>Net Revenue Rescued</strong><br>
-      <span style="color:var(--accent-gold)" id="heroRate">
-        0% Customer Recovery
-      </span>
+    <div class="hero-badge">
+
+      <div
+        class="hero-badge-value"
+        id="heroNetValue">
+        ₹0
+      </div>
+
+      <div class="hero-badge-label">
+        Net Revenue Rescued
+      </div>
+
     </div>
 
-  </div>
+  </section>
 
-</div>
 
-<!-- EXECUTIVE KPIs -->
-<div class="kpi-grid" id="kpis"></div>
+  <!-- =======================================================
+       KPI CARDS
+  ======================================================== -->
 
-<!-- RECOVERY INTELLIGENCE -->
-<div class="dashboard-grid">
+  <section
+    class="kpi-grid"
+    id="kpis">
 
-  <div class="mini-card">
+    <div class="kpi">
+      <div class="kpi-label">
+        Revenue at Risk
+      </div>
 
-    <div class="mini-title">
-      Revenue Recovery Funnel
+      <div class="kpi-value">
+        ₹0
+      </div>
+
+      <div class="kpi-meta">
+        Loading...
+      </div>
     </div>
 
-    <div class="mini-subtitle">
-      From failed subscription payments to recovered revenue
+    <div class="kpi primary">
+      <div class="kpi-label">
+        Revenue Recovered
+      </div>
+
+      <div class="kpi-value">
+        ₹0
+      </div>
+
+      <div class="kpi-meta">
+        Loading...
+      </div>
     </div>
 
-    <div id="funnel"></div>
+    <div class="kpi">
+      <div class="kpi-label">
+        Recovery Rate
+      </div>
 
-  </div>
+      <div class="kpi-value">
+        0%
+      </div>
 
-  <div class="mini-card">
-
-    <div class="mini-title">
-      Failure Intelligence
+      <div class="kpi-meta">
+        Loading...
+      </div>
     </div>
 
-    <div class="mini-subtitle">
-      What caused the failed payments?
+    <div class="kpi">
+      <div class="kpi-label">
+        Net Value Created
+      </div>
+
+      <div class="kpi-value">
+        ₹0
+      </div>
+
+      <div class="kpi-meta">
+        After intervention cost
+      </div>
     </div>
 
-    <div class="reason-list" id="reasonList"></div>
+  </section>
 
-  </div>
 
-</div>
+  <!-- =======================================================
+       RECOVERY INTELLIGENCE
+  ======================================================== -->
 
-<!-- DECISION DISTRIBUTION -->
-<div class="chart-card">
+  <section class="grid-2">
 
-  <div class="section-heading">
-    Agent Decision Distribution
-  </div>
+    <!-- FUNNEL -->
 
-  <div class="decision-grid" id="decisionGrid"></div>
+    <div class="card">
 
-</div>
+      <div class="card-title">
+        Revenue Recovery Funnel
+      </div>
 
-<!-- CHART -->
-<div class="chart-card">
+      <div class="card-subtitle">
+        From failed payment to recovered revenue
+      </div>
 
-  <div class="section-heading">
-    Recovery Outcomes Breakdown
-  </div>
+      <div id="funnel">
 
-  <canvas id="chart" height="85"></canvas>
+        <div class="empty">
+          Loading recovery data...
+        </div>
 
-</div>
+      </div>
 
-<!-- LIVE ACTIVITY + ECONOMICS -->
-<div class="dashboard-grid">
-
-  <div class="mini-card">
-
-    <div class="mini-title">
-      <span class="status-dot"></span>
-      Live Recovery Activity
     </div>
 
-    <div class="mini-subtitle">
-      Latest customer outcomes from the recovery engine
+
+    <!-- FAILURE INTELLIGENCE -->
+
+    <div class="card">
+
+      <div class="card-title">
+        Failure Intelligence
+      </div>
+
+      <div class="card-subtitle">
+        What caused the failed payments?
+      </div>
+
+      <div id="reasonList">
+
+        <div class="empty">
+          Loading failure intelligence...
+        </div>
+
+      </div>
+
     </div>
 
-    <div class="live-feed" id="liveFeed"></div>
+  </section>
 
-  </div>
 
-  <div class="mini-card">
+  <!-- =======================================================
+       AGENT DECISIONS
+  ======================================================== -->
 
-    <div class="mini-title">
-      Recovery Economics
+  <section class="card" style="margin-bottom:20px;">
+
+    <div class="card-title">
+      Agent Decision Distribution
     </div>
 
-    <div class="mini-subtitle">
-      Measure value created after intervention costs
+    <div class="card-subtitle">
+      Actions selected by the recovery engine
     </div>
 
-    <div id="economics"></div>
-
-  </div>
-
-</div>
-
-<!-- AI AUDIT -->
-<div class="ai-card" id="ai-assistant">
-
-  <div class="ai-header">
-
-    <div class="ai-title">
-      💎 Ask AI Audit Intelligence
+    <div
+      class="decision-grid"
+      id="decisionGrid">
     </div>
 
-  </div>
+  </section>
 
-  <div class="ai-chips">
 
-    <span
-      class="ai-chip"
-      onclick="askAi('Why did we give up on cust_7?')">
-      Why did we give up on cust_7?
-    </span>
+  <!-- =======================================================
+       ACTIVITY + ECONOMICS
+  ======================================================== -->
 
-    <span
-      class="ai-chip"
-      onclick="askAi('Why was cust_1 not retried?')">
-      Why was cust_1 not retried?
-    </span>
+  <section class="grid-2">
 
-    <span
-      class="ai-chip"
-      onclick="askAi('Summarize recent recovery performance')">
-      Summarize recent recovery performance
-    </span>
+    <!-- LIVE ACTIVITY -->
 
-  </div>
+    <div class="card">
 
-  <div class="ai-input-wrapper">
+      <div class="card-title">
+        <span style="color:#2e7d52;">●</span>
+        Live Recovery Activity
+      </div>
+
+      <div class="card-subtitle">
+        Latest customer outcomes
+      </div>
+
+      <div
+        class="live-feed"
+        id="liveFeed">
+      </div>
+
+    </div>
+
+
+    <!-- ECONOMICS -->
+
+    <div class="card">
+
+      <div class="card-title">
+        Recovery Economics
+      </div>
+
+      <div class="card-subtitle">
+        Value created after intervention costs
+      </div>
+
+      <div id="economics">
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =======================================================
+       AI AUDIT
+  ======================================================== -->
+
+  <section
+    class="card ai-card"
+    id="ai">
+
+    <div class="card-title">
+      ✦ Ask AI Audit Intelligence
+    </div>
+
+    <div class="card-subtitle">
+      Ask questions about recovery decisions and audit events
+    </div>
+
+
+    <div class="ai-chips">
+
+      <button
+        class="ai-chip"
+        onclick="askAi('Why did we give up on cust_7?')">
+        Why did we give up on cust_7?
+      </button>
+
+      <button
+        class="ai-chip"
+        onclick="askAi('Why was cust_1 not retried?')">
+        Why was cust_1 not retried?
+      </button>
+
+      <button
+        class="ai-chip"
+        onclick="askAi('Summarize recent recovery performance')">
+        Summarize recent recovery performance
+      </button>
+
+    </div>
+
+
+    <div class="ai-input">
+
+      <input
+        id="aiQueryInput"
+        type="text"
+        placeholder="Ask a question about the recovery ledger..."
+        onkeydown="if(event.key === 'Enter') runAiQuery()"
+      >
+
+      <button
+        class="btn btn-primary"
+        onclick="runAiQuery()">
+        Ask AI
+      </button>
+
+    </div>
+
+
+    <div
+      class="ai-response"
+      id="aiResponse">
+    </div>
+
+  </section>
+
+
+  <!-- =======================================================
+       RECOVERY LEDGER
+  ======================================================== -->
+
+  <section
+    class="card ledger-card"
+    id="ledger">
+
+    <div class="card-title">
+      Recovery Ledger
+    </div>
+
+    <div class="card-subtitle">
+      Click a customer to inspect the complete audit trail
+    </div>
+
 
     <input
+      class="search"
+      id="customerSearch"
       type="text"
-      id="aiQueryInput"
-      placeholder="Ask plain-English questions over audit event logs..."
-      onkeydown="if(event.key==='Enter') runAiQuery()">
+      placeholder="Search customer, email, action or status..."
+      oninput="renderCustomers()"
+    >
 
-    <button
-      class="btn-primary"
-      onclick="runAiQuery()">
-      Ask Claude
-    </button>
 
-  </div>
+    <div class="table-wrapper">
 
-  <div
-    class="ai-response-box"
-    id="aiResponse">
-  </div>
+      <table>
+
+        <thead>
+
+          <tr>
+
+            <th>
+              Customer
+            </th>
+
+            <th>
+              Amount
+            </th>
+
+            <th>
+              Latest Action
+            </th>
+
+            <th>
+              Status
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <tbody
+          id="customerTableBody">
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </section>
+
+
+  <!-- =======================================================
+       AUDIT PANEL
+  ======================================================== -->
+
+  <section
+    class="card"
+    id="auditPanel">
+
+    <div
+      style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:10px;
+        margin-bottom:18px;
+      ">
+
+      <div class="card-title">
+        Audit Trail
+        <span
+          id="auditCustomer"
+          style="color:#c59b27;">
+        </span>
+      </div>
+
+      <button
+        class="btn"
+        onclick="closeAudit()">
+        Close
+      </button>
+
+    </div>
+
+
+    <div
+      class="audit-highlight"
+      id="auditHighlight">
+    </div>
+
+
+    <div class="audit-table">
+
+      <table>
+
+        <thead>
+
+          <tr>
+
+            <th>Time</th>
+            <th>Event</th>
+            <th>Reason</th>
+            <th>Action</th>
+            <th>AI Reasoning</th>
+            <th>Outcome</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody
+          id="auditBody">
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </section>
+
 
 </div>
 
-<!-- RECOVERY LEDGER -->
-<div class="table-card" id="ledger">
-
-  <div class="section-heading">
-    Recovery Ledger Accounts
-  </div>
-
-  <input
-    class="search-box"
-    id="customerSearch"
-    placeholder="Search customer ID, email, action or status..."
-    oninput="renderCustomers()">
-
-  <table id="customerTable">
-
-    <thead>
-      <tr>
-        <th>Customer Account</th>
-        <th>Failed Amount</th>
-        <th>Latest Action</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-
-    <tbody></tbody>
-
-  </table>
-
-</div>
-
-<!-- AUDIT PANEL -->
-<div id="auditPanel">
-
-  <div style="
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:20px;
-  ">
-
-    <h2 style="
-      font-family:var(--serif);
-      font-size:22px;
-    ">
-      Audit Trail & Gating Log:
-      <span
-        id="auditCustomer"
-        style="color:var(--accent-gold)">
-      </span>
-    </h2>
-
-    <button
-      onclick="document.getElementById('auditPanel').style.display='none'">
-      Close
-    </button>
-
-  </div>
-
-  <div
-    id="auditHighlight"
-    class="audit-highlight">
-  </div>
-
-  <table id="auditTable">
-
-    <thead>
-      <tr>
-        <th>Time</th>
-        <th>Event Type</th>
-        <th>Failure Reason</th>
-        <th>Action</th>
-        <th>AI Reasoning</th>
-        <th>Outcome</th>
-        <th>Safety Gate</th>
-      </tr>
-    </thead>
-
-    <tbody id="auditBody"></tbody>
-
-  </table>
-
-</div>
-
-</div>
 
 <script>
 
-let chartInstance;
+/* =========================================================
+   GLOBAL STATE
+========================================================= */
+
 let customers = [];
 let latestMetrics = null;
 
-const money = n =>
-  `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
-const paiseToInr = n =>
-  Number(n || 0);
+/* =========================================================
+   HELPERS
+========================================================= */
 
-const pretty = s =>
-  String(s || '-').replaceAll('_',' ');
+function money(value) {
+
+  const number = Number(value || 0);
+
+  return `₹${number.toLocaleString("en-IN", {
+    maximumFractionDigits: 2
+  })}`;
+
+}
 
 
-/* =========================
+function pretty(value) {
+
+  return String(value || "-")
+    .replaceAll("_", " ");
+
+}
+
+
+function escapeHtml(value) {
+
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+}
+
+
+function getStatusClass(outcome) {
+
+  if (outcome === "recovered") {
+    return "status-recovered";
+  }
+
+  if (
+    outcome === "stopped" ||
+    outcome === "escalated" ||
+    outcome === "give_up"
+  ) {
+    return "status-stopped";
+  }
+
+  return "status-pending";
+
+}
+
+
+/* =========================================================
+   RAZORPAY TEST PAYMENT
+========================================================= */
+
+function openTestPayment() {
+
+  window.location.href = "/test-payment";
+
+}
+
+
+/* =========================================================
    METRICS
-========================= */
+========================================================= */
 
 async function loadMetrics() {
 
-  const res = await fetch('/metrics');
+  const response = await fetch("/metrics");
 
-  if (!res.ok)
-    throw new Error('Unable to load metrics');
+  if (!response.ok) {
+    throw new Error("Unable to load metrics");
+  }
 
-  const m = await res.json();
+  const m = await response.json();
 
   latestMetrics = m;
+
 
   const totalAtRisk =
     Number(m.revenue_at_risk_inr || 0);
 
-  const recoveredRevenue =
+  const recovered =
     Number(m.amount_recovered_inr || 0);
 
-  const revenueRecoveryRate =
-    Number.isFinite(Number(m.revenue_recovery_rate_pct))
-      ? Number(m.revenue_recovery_rate_pct)
-      : (totalAtRisk
-          ? (recoveredRevenue / totalAtRisk) * 100
-          : 0);
+  const recoveryRate =
+    Number(
+      m.revenue_recovery_rate_pct ??
+      m.recovery_rate_pct ??
+      0
+    );
+
+  const netRecovered =
+    Number(m.net_recovered_inr || 0);
 
   const agentCost =
     Number(m.total_agent_cost_inr || 0);
 
-  const roi =
-    agentCost > 0
-      ? recoveredRevenue / agentCost
-      : 0;
-
 
   /* HERO */
 
-  document.getElementById('heroNetValue')
-    .textContent =
-    money(m.net_recovered_inr);
-
-  document.getElementById('heroRate')
-    .textContent =
-    `${Number(m.recovery_rate_pct || 0).toFixed(0)}% Customer Recovery`;
+  document.getElementById(
+    "heroNetValue"
+  ).textContent = money(netRecovered);
 
 
-  /* KPI CARDS */
+  /* KPI */
 
-  document.getElementById('kpis').innerHTML = `
+  document.getElementById("kpis").innerHTML = `
 
-    <div class="kpi-card">
+    <div class="kpi">
 
       <div class="kpi-label">
         Revenue at Risk
@@ -1109,62 +1455,64 @@ async function loadMetrics() {
       </div>
 
       <div class="kpi-meta">
-        ${m.total_customers || 0}
+        ${Number(m.total_customers || 0)}
         failed payment accounts
       </div>
 
     </div>
 
 
-    <div class="kpi-card primary">
+    <div class="kpi primary">
 
       <div class="kpi-label">
         Revenue Recovered
       </div>
 
       <div class="kpi-value">
-        ${money(recoveredRevenue)}
+        ${money(recovered)}
       </div>
 
       <div class="kpi-meta">
-        ${revenueRecoveryRate.toFixed(1)}%
+        ${recoveryRate.toFixed(1)}%
         of revenue at risk
       </div>
 
     </div>
 
 
-    <div class="kpi-card">
+    <div class="kpi">
 
       <div class="kpi-label">
         Recovery Rate
       </div>
 
       <div class="kpi-value">
-        ${Number(m.recovery_rate_pct || 0).toFixed(0)}%
+        ${Number(
+          m.recovery_rate_pct ?? recoveryRate
+        ).toFixed(0)}%
       </div>
 
       <div class="kpi-meta">
-        ${m.recovered_count || 0}
-        of ${m.total_customers || 0}
+        ${Number(m.recovered_count || 0)}
+        of ${Number(m.total_customers || 0)}
         accounts rescued
       </div>
 
     </div>
 
 
-    <div class="kpi-card">
+    <div class="kpi">
 
       <div class="kpi-label">
         Net Value Created
       </div>
 
       <div class="kpi-value">
-        ${money(m.net_recovered_inr)}
+        ${money(netRecovered)}
       </div>
 
       <div class="kpi-meta">
-        After ${money(m.total_agent_cost_inr)}
+        After ${money(agentCost)}
         intervention cost
       </div>
 
@@ -1176,47 +1524,46 @@ async function loadMetrics() {
   /* FUNNEL */
 
   const unrecovered =
-    Math.max(
-      0,
-      totalAtRisk - recoveredRevenue
-    );
+    Math.max(0, totalAtRisk - recovered);
 
-  document.getElementById('funnel').innerHTML = `
+
+  const recoveredWidth =
+    totalAtRisk > 0
+      ? Math.min(100, recovered / totalAtRisk * 100)
+      : 0;
+
+
+  const unrecoveredWidth =
+    totalAtRisk > 0
+      ? Math.min(100, unrecovered / totalAtRisk * 100)
+      : 0;
+
+
+  document.getElementById(
+    "funnel"
+  ).innerHTML = `
 
     <div class="funnel-row">
 
       <div class="funnel-head">
-        <span>Total Revenue at Risk</span>
-        <span>${money(totalAtRisk)}</span>
+
+        <span>
+          Total Revenue at Risk
+        </span>
+
+        <span>
+          ${money(totalAtRisk)}
+        </span>
+
       </div>
 
       <div class="funnel-track">
+
         <div
           class="funnel-fill"
           style="
             width:100%;
-            background:var(--card-dark)
-          ">
-        </div>
-      </div>
-
-    </div>
-
-
-    <div class="funnel-row">
-
-      <div class="funnel-head">
-        <span>Revenue Recovered</span>
-        <span>${money(recoveredRevenue)}</span>
-      </div>
-
-      <div class="funnel-track">
-
-        <div
-          class="funnel-fill"
-          style="
-            width:${Math.min(100,revenueRecoveryRate)}%;
-            background:var(--success-sage)
+            background:#2d221e;
           ">
         </div>
 
@@ -1228,8 +1575,15 @@ async function loadMetrics() {
     <div class="funnel-row">
 
       <div class="funnel-head">
-        <span>Revenue Not Recovered</span>
-        <span>${money(unrecovered)}</span>
+
+        <span>
+          Revenue Recovered
+        </span>
+
+        <span>
+          ${money(recovered)}
+        </span>
+
       </div>
 
       <div class="funnel-track">
@@ -1237,13 +1591,37 @@ async function loadMetrics() {
         <div
           class="funnel-fill"
           style="
-            width:${totalAtRisk
-              ? Math.min(
-                  100,
-                  100 - revenueRecoveryRate
-                )
-              : 0}%;
-            background:var(--stopped-rose)
+            width:${recoveredWidth}%;
+            background:#2e7d52;
+          ">
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="funnel-row">
+
+      <div class="funnel-head">
+
+        <span>
+          Revenue Not Recovered
+        </span>
+
+        <span>
+          ${money(unrecovered)}
+        </span>
+
+      </div>
+
+      <div class="funnel-track">
+
+        <div
+          class="funnel-fill"
+          style="
+            width:${unrecoveredWidth}%;
+            background:#a94442;
           ">
         </div>
 
@@ -1259,7 +1637,7 @@ async function loadMetrics() {
       </span>
 
       <strong>
-        ${money(m.net_recovered_inr)}
+        ${money(netRecovered)}
       </strong>
 
     </div>
@@ -1269,97 +1647,26 @@ async function loadMetrics() {
 
   renderReasonBreakdown();
   renderDecisionDistribution();
+  renderEconomics();
 
-
-  /* ECONOMICS */
-
-  document.getElementById('economics').innerHTML = `
-
-    <div style="display:grid;gap:14px">
-
-      <div style="
-        display:flex;
-        justify-content:space-between">
-        <span>Gross recovered</span>
-        <strong class="mono-val">
-          ${money(recoveredRevenue)}
-        </strong>
-      </div>
-
-
-      <div style="
-        display:flex;
-        justify-content:space-between">
-        <span>Discount cost</span>
-        <strong class="mono-val">
-          ${money(m.cost_breakdown?.discount_costs_inr)}
-        </strong>
-      </div>
-
-
-      <div style="
-        display:flex;
-        justify-content:space-between">
-        <span>Human escalation cost</span>
-        <strong class="mono-val">
-          ${money(
-            m.cost_breakdown?.human_escalation_costs_inr
-          )}
-        </strong>
-      </div>
-
-
-      <div style="
-        border-top:1px solid var(--card-border);
-        padding-top:14px;
-        display:flex;
-        justify-content:space-between;
-        font-size:16px">
-
-        <strong>
-          Net recovered
-        </strong>
-
-        <strong class="mono-val">
-          ${money(m.net_recovered_inr)}
-        </strong>
-
-      </div>
-
-
-      <div style="
-        font-size:11px;
-        color:var(--text-muted)">
-
-        Recovery generated
-        ${roi ? roi.toFixed(0) : '∞'}×
-        the recorded agent cost.
-
-      </div>
-
-    </div>
-
-  `;
-
-
-  drawChart(m);
 }
 
 
-/* =========================
+/* =========================================================
    FAILURE BREAKDOWN
-========================= */
+========================================================= */
 
 function renderReasonBreakdown() {
 
   const counts = {};
 
-  customers.forEach(c => {
+
+  customers.forEach(customer => {
 
     const reason =
-      c.latest_reason ||
-      c.reason_code ||
-      'unknown';
+      customer.latest_reason ||
+      customer.reason_code ||
+      "unknown";
 
     counts[reason] =
       (counts[reason] || 0) + 1;
@@ -1371,65 +1678,78 @@ function renderReasonBreakdown() {
     Object.entries(counts)
       .sort((a,b) => b[1] - a[1]);
 
+
+  if (entries.length === 0) {
+
+    document.getElementById(
+      "reasonList"
+    ).innerHTML = `
+      <div class="empty">
+        No failure-reason data available.
+      </div>
+    `;
+
+    return;
+
+  }
+
+
   const max =
     Math.max(
-      ...entries.map(x => x[1]),
+      ...entries.map(item => item[1]),
       1
     );
 
 
-  document.getElementById('reasonList').innerHTML =
-    entries.length
+  document.getElementById(
+    "reasonList"
+  ).innerHTML = entries.map(
+    ([reason,count]) => `
 
-      ? entries.map(([reason,count]) => `
+      <div class="reason-row">
 
-        <div class="reason-item">
+        <div class="reason-name">
+          ${escapeHtml(pretty(reason))}
+        </div>
 
-          <div class="reason-name">
-            ${pretty(reason)}
-          </div>
+        <div class="reason-track">
 
-          <div class="reason-track">
-
-            <div
-              class="reason-fill"
-              style="width:${count / max * 100}%">
-            </div>
-
-          </div>
-
-          <div class="reason-count">
-            ${count}
+          <div
+            class="reason-fill"
+            style="
+              width:${count / max * 100}%;
+            ">
           </div>
 
         </div>
 
-      `).join('')
-
-      : `
-        <div style="
-          color:var(--text-muted);
-          font-size:12px">
-          No failure-reason data available.
+        <div class="reason-count">
+          ${count}
         </div>
-      `;
+
+      </div>
+
+    `
+  ).join("");
+
 }
 
 
-/* =========================
+/* =========================================================
    DECISION DISTRIBUTION
-========================= */
+========================================================= */
 
 function renderDecisionDistribution() {
 
   const counts = {};
 
-  customers.forEach(c => {
+
+  customers.forEach(customer => {
 
     const action =
-      c.latest_action ||
-      c.action_taken ||
-      'unknown';
+      customer.latest_action ||
+      customer.action_taken ||
+      "unknown";
 
     counts[action] =
       (counts[action] || 0) + 1;
@@ -1438,265 +1758,402 @@ function renderDecisionDistribution() {
 
 
   const actions = [
-    'retry_now',
-    'retry_in_24h',
-    'send_discount_offer',
-    'escalate_human',
-    'give_up'
+
+    "retry_now",
+
+    "retry_in_24h",
+
+    "send_discount_offer",
+
+    "escalate_human",
+
+    "give_up"
+
   ];
 
 
-  document.getElementById('decisionGrid').innerHTML =
-    actions.map(action => `
+  document.getElementById(
+    "decisionGrid"
+  ).innerHTML = actions.map(
+    action => `
 
-      <div class="decision-box">
+      <div class="decision">
 
-        <div class="decision-num">
+        <div class="decision-number">
           ${counts[action] || 0}
         </div>
 
         <div class="decision-label">
-          ${pretty(action)}
+          ${escapeHtml(pretty(action))}
         </div>
 
       </div>
 
-    `).join('');
-}
-
-
-/* =========================
-   CHART
-========================= */
-
-function drawChart(m) {
-
-  const ctx =
-    document.getElementById('chart');
-
-  const data = {
-
-    labels:[
-      'Recovered',
-      'Escalated / Stopped',
-      'Pending'
-    ],
-
-    datasets:[{
-
-      label:'Accounts',
-
-      data:[
-        m.recovered_count || 0,
-        m.escalated_or_gave_up || 0,
-        m.still_pending || 0
-      ],
-
-      backgroundColor:[
-        '#2E7D52',
-        '#A94442',
-        '#C59B27'
-      ],
-
-      borderRadius:8
-
-    }]
-
-  };
-
-
-  if (chartInstance)
-    chartInstance.destroy();
-
-
-  chartInstance =
-    new Chart(ctx, {
-
-      type:'bar',
-
-      data,
-
-      options:{
-
-        responsive:true,
-
-        plugins:{
-          legend:{
-            display:false
-          }
-        },
-
-        scales:{
-
-          y:{
-            beginAtZero:true,
-            grid:{
-              color:'#E8DFD5'
-            },
-            ticks:{
-              color:'#7C6C62',
-              font:{
-                family:'IBM Plex Mono'
-              }
-            }
-          },
-
-          x:{
-            grid:{
-              display:false
-            },
-            ticks:{
-              color:'#7C6C62',
-              font:{
-                family:'Plus Jakarta Sans',
-                weight:'600'
-              }
-            }
-          }
-
-        }
-
-      }
-
-    });
+    `
+  ).join("");
 
 }
 
 
-/* =========================
+/* =========================================================
+   ECONOMICS
+========================================================= */
+
+function renderEconomics() {
+
+  if (!latestMetrics) {
+    return;
+  }
+
+
+  const m = latestMetrics;
+
+
+  const recovered =
+    Number(m.amount_recovered_inr || 0);
+
+  const discountCost =
+    Number(
+      m.cost_breakdown?.discount_costs_inr || 0
+    );
+
+  const humanCost =
+    Number(
+      m.cost_breakdown?.human_escalation_costs_inr || 0
+    );
+
+  const net =
+    Number(m.net_recovered_inr || 0);
+
+
+  const cost =
+    Number(m.total_agent_cost_inr || 0);
+
+
+  const roi =
+    cost > 0
+      ? recovered / cost
+      : 0;
+
+
+  document.getElementById(
+    "economics"
+  ).innerHTML = `
+
+    <div class="economic-row">
+
+      <span>
+        Gross recovered
+      </span>
+
+      <strong>
+        ${money(recovered)}
+      </strong>
+
+    </div>
+
+
+    <div class="economic-row">
+
+      <span>
+        Discount cost
+      </span>
+
+      <strong>
+        ${money(discountCost)}
+      </strong>
+
+    </div>
+
+
+    <div class="economic-row">
+
+      <span>
+        Human escalation cost
+      </span>
+
+      <strong>
+        ${money(humanCost)}
+      </strong>
+
+    </div>
+
+
+    <div
+      class="economic-row economic-total">
+
+      <strong>
+        Net recovered
+      </strong>
+
+      <strong>
+        ${money(net)}
+      </strong>
+
+    </div>
+
+
+    <div
+      style="
+        color:#7c6c62;
+        font-size:10px;
+        margin-top:5px;
+      ">
+
+      Recovery generated
+      ${roi ? roi.toFixed(1) : "∞"}×
+      the recorded agent cost.
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================================================
    CUSTOMERS
-========================= */
+========================================================= */
 
 async function loadCustomers() {
 
-  const res =
-    await fetch('/customers');
+  const response =
+    await fetch("/customers");
 
-  if (!res.ok)
-    throw new Error('Unable to load customers');
+
+  if (!response.ok) {
+    throw new Error("Unable to load customers");
+  }
+
 
   const data =
-    await res.json();
+    await response.json();
 
 
-  customers =
-    Array.isArray(data)
-      ? data
-      : (
-          Array.isArray(data.value)
-            ? data.value
-            : []
-        );
+  if (Array.isArray(data)) {
+
+    customers = data;
+
+  } else if (
+    Array.isArray(data.value)
+  ) {
+
+    customers = data.value;
+
+  } else {
+
+    customers = [];
+
+  }
 
 
   renderCustomers();
   renderLiveFeed();
+
 }
 
+
+/* =========================================================
+   CUSTOMER TABLE
+========================================================= */
 
 function renderCustomers() {
 
   const search =
     (
       document.getElementById(
-        'customerSearch'
-      )?.value || ''
-    ).toLowerCase().trim();
+        "customerSearch"
+      )?.value || ""
+    )
+      .toLowerCase()
+      .trim();
 
 
   const filtered =
-    customers.filter(r =>
+    customers.filter(customer => {
 
-      [
-        r.id,
-        r.email,
-        r.latest_action,
-        r.action_taken,
-        r.latest_outcome,
-        r.outcome,
-        r.latest_reason,
-        r.reason_code
-      ]
+      const fields = [
 
-      .some(v =>
-        String(v || '')
-          .toLowerCase()
-          .includes(search)
-      )
+        customer.id,
 
-    );
+        customer.email,
+
+        customer.latest_action,
+
+        customer.action_taken,
+
+        customer.latest_outcome,
+
+        customer.outcome,
+
+        customer.latest_reason,
+
+        customer.reason_code
+
+      ];
+
+
+      return fields.some(
+        value =>
+          String(value || "")
+            .toLowerCase()
+            .includes(search)
+      );
+
+    });
 
 
   const tbody =
-    document.querySelector(
-      '#customerTable tbody'
+    document.getElementById(
+      "customerTableBody"
     );
 
 
+  if (filtered.length === 0) {
+
+    tbody.innerHTML = `
+
+      <tr>
+
+        <td
+          colspan="4"
+          class="empty">
+
+          No customer records found.
+
+        </td>
+
+      </tr>
+
+    `;
+
+    return;
+
+  }
+
+
   tbody.innerHTML =
-    filtered.map(r => {
+    filtered.map(customer => {
 
       const outcome =
-        r.latest_outcome ||
-        r.outcome ||
-        'pending';
+        customer.latest_outcome ||
+        customer.outcome ||
+        "pending";
 
 
-      let badgeClass =
-        'pill-pending';
+      const action =
+        customer.latest_action ||
+        customer.action_taken ||
+        "pending";
 
 
-      if (outcome === 'recovered')
-        badgeClass =
-          'pill-recovered';
+      const reason =
+        customer.latest_reason ||
+        customer.reason_code ||
+        "unknown";
 
 
-      if (
-        outcome === 'stopped' ||
-        outcome === 'escalated'
-      )
-        badgeClass =
-          'pill-stopped';
+      const statusClass =
+        getStatusClass(outcome);
+
+
+      /*
+       * IMPORTANT:
+       * Database amount is already INR.
+       * Do NOT divide by 100 here.
+       */
+
+      const amount =
+        Number(customer.amount || 0);
 
 
       return `
 
-        <tr onclick="
-          loadAudit('${String(r.id).replaceAll("'","")}')
-        ">
-
-          <td class="mono-val">
-            ${r.id}
-          </td>
-
-          <td class="mono-val">
-            ${money(paiseToInr(r.amount))}
-          </td>
-
-          <td class="mono-val">
-            <code>
-              ${pretty(r.latest_action || r.action_taken)}
-            </code>
-          </td>
+        <tr
+          onclick="
+            loadAudit(
+              '${escapeHtml(customer.id)}'
+            )
+          ">
 
           <td>
+
+            <div class="mono">
+              ${escapeHtml(customer.id)}
+            </div>
+
+            <div
+              style="
+                color:#7c6c62;
+                font-size:9px;
+                margin-top:3px;
+              ">
+
+              ${escapeHtml(
+                customer.email || ""
+              )}
+
+            </div>
+
+          </td>
+
+
+          <td class="mono">
+
+            ${money(amount)}
+
+          </td>
+
+
+          <td>
+
+            <div class="mono">
+              ${escapeHtml(
+                pretty(action)
+              )}
+            </div>
+
+            <div
+              style="
+                color:#7c6c62;
+                font-size:9px;
+                margin-top:3px;
+              ">
+
+              ${escapeHtml(
+                pretty(reason)
+              )}
+
+            </div>
+
+          </td>
+
+
+          <td>
+
             <span
-              class="pill-badge ${badgeClass}">
-              ${outcome}
+              class="status ${statusClass}">
+
+              ${escapeHtml(
+                pretty(outcome)
+              )}
+
             </span>
+
           </td>
 
         </tr>
 
       `;
 
-    }).join('');
+    }).join("");
+
 }
 
 
-/* =========================
+/* =========================================================
    LIVE FEED
-========================= */
+========================================================= */
 
 function renderLiveFeed() {
 
@@ -1707,11 +2164,58 @@ function renderLiveFeed() {
       .slice(0,8);
 
 
-  document.getElementById('liveFeed').innerHTML =
-    feed.map(r => {
+  const element =
+    document.getElementById(
+      "liveFeed"
+    );
 
-      const stopped =
-        r.latest_outcome !== 'recovered';
+
+  if (feed.length === 0) {
+
+    element.innerHTML = `
+
+      <div class="empty">
+        No recovery activity yet.
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+
+  element.innerHTML =
+    feed.map(customer => {
+
+      const outcome =
+        customer.latest_outcome ||
+        customer.outcome ||
+        "pending";
+
+
+      const action =
+        customer.latest_action ||
+        customer.action_taken ||
+        "pending";
+
+
+      const amount =
+        Number(customer.amount || 0);
+
+
+      let dotClass = "";
+
+      if (outcome === "pending") {
+        dotClass = "pending";
+      }
+
+      if (
+        outcome === "stopped" ||
+        outcome === "escalated"
+      ) {
+        dotClass = "stopped";
+      }
 
 
       return `
@@ -1719,24 +2223,31 @@ function renderLiveFeed() {
         <div class="feed-item">
 
           <span
-            class="feed-dot ${stopped ? 'stop' : ''}">
+            class="feed-dot ${dotClass}">
           </span>
 
           <div class="feed-main">
 
             <strong>
-              ${r.id}
+              ${escapeHtml(customer.id)}
             </strong>
 
             —
-            ${money(paiseToInr(r.amount))}
+            ${money(amount)}
 
-            ${stopped
-              ? ' escalated/stopped'
-              : ' recovered'}
+            <div
+              class="feed-time">
 
-            <div class="feed-time">
-              ${pretty(r.latest_action || r.action_taken)}
+              ${escapeHtml(
+                pretty(action)
+              )}
+
+              ·
+
+              ${escapeHtml(
+                pretty(outcome)
+              )}
+
             </div>
 
           </div>
@@ -1745,300 +2256,127 @@ function renderLiveFeed() {
 
       `;
 
-    }).join('');
+    }).join("");
+
 }
 
 
-/* =========================
+/* =========================================================
    AUDIT
-========================= */
+========================================================= */
 
 async function loadAudit(customerId) {
 
-  const res =
-    await fetch(
-      `/audit/${encodeURIComponent(customerId)}`
-    );
+  try {
 
-  if (!res.ok)
-    return;
-
-
-  const rows =
-    await res.json();
+    const response =
+      await fetch(
+        `/audit/${encodeURIComponent(customerId)}`
+      );
 
 
-  document.getElementById(
-    'auditCustomer'
-  ).textContent =
-    customerId;
+    if (!response.ok) {
+      return;
+    }
 
 
-  const first =
-    rows[0] || {};
+    const rows =
+      await response.json();
 
 
-  const nonRetryable =
-    [
-      'card_expired',
-      'invalid_card'
-    ].includes(
-      first.reason_code
-    );
-
-
-  document.getElementById(
-    'auditHighlight'
-  ).innerHTML = `
-
-    <div class="audit-highlight-title">
-
-      ${
-        nonRetryable
-          ? 'Why did Shimmer NOT retry?'
-          : 'Why did Shimmer take this path?'
-      }
-
-    </div>
-
-
-    <div class="audit-highlight-text">
-
-      ${
-        nonRetryable
-
-          ? `
-            The payment was classified as
-            <strong>
-              ${pretty(first.reason_code)}
-            </strong>,
-            which is non-retryable under the
-            safety policy. Shimmer therefore
-            escalates instead of repeatedly
-            attempting a payment method that
-            cannot succeed.
-          `
-
-          : `
-            The payment was classified as
-            <strong>
-              ${pretty(first.reason_code)}
-            </strong>.
-            Shimmer evaluates retryability,
-            attempt limits and intervention rules
-            before executing the selected action.
-          `
-      }
-
-    </div>
-
-  `;
-
-
-  const tbody =
     document.getElementById(
-      'auditBody'
-    );
+      "auditCustomer"
+    ).textContent =
+      ` — ${customerId}`;
 
 
-  tbody.innerHTML =
-    rows.map((r,idx) => {
-
-      let ruledOutList = [];
-
-      try {
-
-        ruledOutList =
-          typeof r.ruled_out_json === 'string'
-
-            ? JSON.parse(
-                r.ruled_out_json
-              )
-
-            : (
-                r.ruled_out_json || []
-              );
-
-      } catch (_) {}
+    const first =
+      rows[0] || {};
 
 
-      const gatingBoxId =
-        `gating_${r.id || idx}`;
+    const nonRetryable =
+      [
+        "card_expired",
+        "invalid_card"
+      ].includes(
+        first.reason_code
+      );
 
 
-      const outcome =
-        r.outcome ||
-        'pending';
+    document.getElementById(
+      "auditHighlight"
+    ).innerHTML = `
+
+      <div class="audit-highlight-title">
+
+        ${
+          nonRetryable
+            ? "Why did Shimmer NOT retry?"
+            : "Why did Shimmer take this path?"
+        }
+
+      </div>
 
 
-      let badgeClass =
-        'pill-pending';
+      <div class="audit-highlight-text">
+
+        ${
+          nonRetryable
+
+            ? `
+
+              The payment was classified as
+              <strong>
+                ${escapeHtml(
+                  pretty(first.reason_code)
+                )}
+              </strong>.
+
+              This failure type is non-retryable
+              under the safety policy, so Shimmer
+              avoids repeated payment attempts and
+              escalates instead.
+
+            `
+
+            : `
+
+              The payment was classified as
+              <strong>
+                ${escapeHtml(
+                  pretty(first.reason_code)
+                )}
+              </strong>.
+
+              Shimmer evaluates retryability,
+              attempt limits and intervention rules
+              before executing the selected action.
+
+            `
+        }
+
+      </div>
+
+    `;
 
 
-      if (outcome === 'recovered')
-        badgeClass =
-          'pill-recovered';
+    const body =
+      document.getElementById(
+        "auditBody"
+      );
 
 
-      if (
-        outcome === 'stopped' ||
-        outcome === 'escalated'
-      )
-        badgeClass =
-          'pill-stopped';
+    if (rows.length === 0) {
 
-
-      return `
+      body.innerHTML = `
 
         <tr>
 
-          <td class="mono-val">
-            ${new Date(
-              r.created_at
-            ).toLocaleTimeString()}
-          </td>
+          <td
+            colspan="6"
+            class="empty">
 
-          <td class="mono-val">
-            ${r.event_type || '-'}
-          </td>
-
-          <td class="mono-val">
-            <code>
-              ${r.reason_code || '-'}
-            </code>
-          </td>
-
-          <td class="mono-val">
-            <strong>
-              ${r.action_taken || '-'}
-            </strong>
-          </td>
-
-          <td>
-            ${
-              r.llm_reasoning ||
-              'Deterministic safety fallback'
-            }
-          </td>
-
-          <td>
-
-            <span
-              class="pill-badge ${badgeClass}">
-              ${outcome}
-            </span>
-
-          </td>
-
-          <td>
-
-            <button
-              onclick="
-                event.stopPropagation();
-                toggleGating('${gatingBoxId}')
-              "
-              style="
-                font-size:11px;
-                padding:6px 12px;
-              ">
-
-              🔍 Why NOT Retry?
-              (${ruledOutList.length})
-
-            </button>
-
-          </td>
-
-        </tr>
-
-
-        <tr
-          id="${gatingBoxId}"
-          style="
-            display:none;
-            background:#FAF5EF;
-          ">
-
-          <td colspan="7">
-
-            <div class="gating-container">
-
-              <strong
-                style="
-                  color:var(--accent-gold);
-                ">
-
-                Safety Gate Breakdown
-
-              </strong>
-
-
-              <table style="margin-top:10px">
-
-                <thead>
-
-                  <tr>
-
-                    <th style="color:#A39388">
-                      Action
-                    </th>
-
-                    <th style="color:#A39388">
-                      Status
-                    </th>
-
-                    <th style="color:#A39388">
-                      Rule Justification
-                    </th>
-
-                  </tr>
-
-                </thead>
-
-
-                <tbody>
-
-                  ${
-                    ruledOutList.map(item => `
-
-                      <tr>
-
-                        <td class="mono-val">
-                          <code>
-                            ${item.action || '-'}
-                          </code>
-                        </td>
-
-                        <td>
-
-                          <span
-                            class="
-                              status-tag
-                              status-${item.status}
-                            ">
-
-                            ${item.status || '-'}
-
-                          </span>
-
-                        </td>
-
-                        <td style="color:#E8DFD5">
-
-                          ${item.reason || '-'}
-
-                        </td>
-
-                      </tr>
-
-                    `).join('')
-                  }
-
-                </tbody>
-
-              </table>
-
-            </div>
+            No audit events found.
 
           </td>
 
@@ -2046,50 +2384,147 @@ async function loadAudit(customerId) {
 
       `;
 
-    }).join('');
+    } else {
+
+      body.innerHTML =
+        rows.map(row => {
+
+          const outcome =
+            row.outcome || "pending";
 
 
-  document.getElementById(
-    'auditPanel'
-  ).style.display =
-    'block';
+          return `
+
+            <tr>
+
+              <td class="mono">
+
+                ${row.created_at
+                  ? new Date(
+                      row.created_at
+                    ).toLocaleTimeString()
+                  : "-"
+                }
+
+              </td>
 
 
-  document.getElementById(
-    'auditPanel'
-  ).scrollIntoView({
-    behavior:'smooth'
-  });
+              <td class="mono">
 
-}
+                ${escapeHtml(
+                  row.event_type || "-"
+                )}
+
+              </td>
 
 
-function toggleGating(id) {
+              <td class="mono">
 
-  const el =
-    document.getElementById(id);
+                ${escapeHtml(
+                  row.reason_code || "-"
+                )}
 
-  if (el) {
+              </td>
 
-    el.style.display =
-      el.style.display === 'none'
-        ? 'table-row'
-        : 'none';
+
+              <td class="mono">
+
+                <strong>
+
+                  ${escapeHtml(
+                    row.action_taken || "-"
+                  )}
+
+                </strong>
+
+              </td>
+
+
+              <td>
+
+                ${escapeHtml(
+                  row.llm_reasoning ||
+                  "Deterministic safety fallback"
+                )}
+
+              </td>
+
+
+              <td>
+
+                <span
+                  class="
+                    status
+                    ${getStatusClass(outcome)}
+                  ">
+
+                  ${escapeHtml(
+                    outcome
+                  )}
+
+                </span>
+
+              </td>
+
+            </tr>
+
+          `;
+
+        }).join("");
+
+    }
+
+
+    const panel =
+      document.getElementById(
+        "auditPanel"
+      );
+
+
+    panel.style.display = "block";
+
+
+    panel.scrollIntoView({
+      behavior: "smooth"
+    });
+
+  }
+
+  catch(error) {
+
+    console.error(
+      "Audit error:",
+      error
+    );
 
   }
 
 }
 
 
-/* =========================
-   AI AUDIT ASSISTANT
-========================= */
+/* =========================================================
+   CLOSE AUDIT
+========================================================= */
 
-function askAi(q) {
+function closeAudit() {
 
   document.getElementById(
-    'aiQueryInput'
-  ).value = q;
+    "auditPanel"
+  ).style.display = "none";
+
+}
+
+
+/* =========================================================
+   AI AUDIT
+========================================================= */
+
+function askAi(question) {
+
+  document.getElementById(
+    "aiQueryInput"
+  ).value = question;
+
 
   runAiQuery();
 
@@ -2098,123 +2533,163 @@ function askAi(q) {
 
 async function runAiQuery() {
 
-  const q =
+  const input =
     document.getElementById(
-      'aiQueryInput'
-    ).value.trim();
+      "aiQueryInput"
+    );
 
 
-  if (!q)
+  const query =
+    input.value.trim();
+
+
+  if (!query) {
     return;
+  }
 
 
   const responseBox =
     document.getElementById(
-      'aiResponse'
+      "aiResponse"
     );
 
 
   responseBox.style.display =
-    'block';
+    "block";
 
 
   responseBox.innerHTML =
-    '✨ <em>Consulting Claude Audit Intelligence...</em>';
+    "✦ Analyzing recovery audit...";
 
 
   try {
 
-    const res =
+    const response =
       await fetch(
-        '/query-audit',
+        "/query-audit",
         {
-          method:'POST',
+          method: "POST",
 
-          headers:{
-            'Content-Type':
-              'application/json'
+          headers: {
+            "Content-Type":
+              "application/json"
           },
 
-          body:JSON.stringify({
-            query:q
+          body: JSON.stringify({
+            query
           })
-
         }
       );
 
 
     const data =
-      await res.json();
+      await response.json();
 
 
     responseBox.innerHTML = `
 
       <strong>
-        Audit Response:
+        Audit Response
       </strong>
 
-      ${
+      <br><br>
+
+      ${escapeHtml(
         data.answer ||
         data.error ||
-        'No answer returned.'
-      }
+        "No answer returned."
+      )}
 
     `;
 
   }
 
-  catch(err) {
+  catch(error) {
 
-    responseBox.innerHTML =
-      `❌ Error querying audit assistant: ${err.message}`;
+    responseBox.innerHTML = `
+
+      <strong>
+        Unable to query audit assistant.
+      </strong>
+
+      <br><br>
+
+      ${escapeHtml(
+        error.message
+      )}
+
+    `;
 
   }
 
 }
 
 
-/* =========================
-   RESET
-========================= */
+/* =========================================================
+   RESET DEMO
+========================================================= */
 
 async function resetDemo() {
 
-  if (
-    !confirm(
-      'Wipe all demo data and restart clean?'
-    )
-  )
+  const confirmed =
+    confirm(
+      "Wipe all demo data and restart clean?"
+    );
+
+
+  if (!confirmed) {
     return;
+  }
 
 
-  await fetch(
-    '/reset-demo',
-    {
-      method:'POST',
+  try {
 
-      headers:{
-        'x-admin-key':
-          'admin123'
-      }
+    const response =
+      await fetch(
+        "/reset-demo",
+        {
+          method: "POST",
+
+          headers: {
+            "x-admin-key":
+              "admin123"
+          }
+        }
+      );
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        "Reset request failed"
+      );
 
     }
-  );
 
 
-  document.getElementById(
-    'auditPanel'
-  ).style.display =
-    'none';
+    document.getElementById(
+      "auditPanel"
+    ).style.display = "none";
 
 
-  await loadAll();
+    await loadAll();
+
+  }
+
+  catch(error) {
+
+    alert(
+      `Reset failed: ${error.message}`
+    );
+
+  }
 
 }
 
 
-/* =========================
+/* =========================================================
    LOAD EVERYTHING
-========================= */
+========================================================= */
 
 async function loadAll() {
 
@@ -2226,23 +2701,30 @@ async function loadAll() {
 
   }
 
-  catch(err) {
+  catch(error) {
 
-    console.error(err);
+    console.error(
+      "Dashboard error:",
+      error
+    );
+
 
     document.getElementById(
-      'kpis'
+      "kpis"
     ).innerHTML = `
 
       <div
-        class="kpi-card"
+        class="kpi"
         style="
           grid-column:1/-1;
-          color:var(--stopped-rose);
         ">
 
-        Dashboard error:
-        ${err.message}
+        <div class="error-box">
+
+          Dashboard could not load:
+          ${escapeHtml(error.message)}
+
+        </div>
 
       </div>
 
@@ -2253,7 +2735,19 @@ async function loadAll() {
 }
 
 
+/* =========================================================
+   INITIAL LOAD
+========================================================= */
+
 loadAll();
+
+
+/*
+ * Refresh dashboard every 6 seconds.
+ * This means captured Razorpay payments
+ * will appear automatically after the webhook
+ * updates the database.
+ */
 
 setInterval(
   loadAll,
