@@ -4,20 +4,25 @@
 
 **Razorpay Buildathon 2026 — Track 03: AI Revenue Recovery**
 
-Shimmer is an autonomous AI-powered payment recovery engine for subscription SaaS businesses. Instead of blindly retrying failed payments, Shimmer understands the failure reason, uses AI to recommend the best next action, applies deterministic financial safety rules, executes or schedules the permitted action, and records every decision in an auditable trail.
+Shimmer is an AI-powered payment recovery engine that detects failed payments, understands why they failed, recommends the best recovery action, applies deterministic safety rules, and records every decision in an auditable trail.
 
-### 🔗 Links
+For the current demonstration, Shimmer uses **Razorpay Test Mode** for safe payment and webhook testing without charging real money.
+
+---
+
+## 🔗 Links
 
 - **Live Demo:** https://recovery-agent-go6k.onrender.com/
+- **Test Payment:** https://recovery-agent-go6k.onrender.com/test-payment
 - **GitHub:** https://github.com/Debasmita012/recovery-agent
 
 ---
 
-## 🎯 The Problem
+# 🎯 The Problem
 
-Failed subscription payments create involuntary churn and revenue leakage.
+Failed payments cause revenue leakage and involuntary customer churn.
 
-A simple retry system treats every failure the same:
+A basic system simply retries every failure:
 
 ```text
 Payment Failed
@@ -29,20 +34,14 @@ Retry Again
 Give Up
 ```
 
-But payment failures have different causes.
+But different failures require different actions:
 
-For example:
+- **Insufficient funds** → retry later
+- **Bank declined** → controlled retry
+- **Expired card** → do not retry
+- **Invalid card** → customer intervention
 
-- **Insufficient funds** → retry later may work
-- **Bank declined** → another controlled attempt may work
-- **Expired card** → repeated retries are pointless
-- **Invalid card** → customer intervention is required
-
-The real question is not:
-
-> **"Should we retry?"**
-
-It is:
+The real question is:
 
 > **"What is the safest and most economically valuable next action?"**
 
@@ -50,12 +49,12 @@ It is:
 
 # 💡 The Solution
 
-Shimmer turns payment recovery into an autonomous decision pipeline:
+Shimmer converts payment failures into an intelligent recovery workflow:
 
 ```text
-Payment Failure
+Payment Event
       ↓
-HMAC Verification
+Webhook Verification
       ↓
 Idempotency Check
       ↓
@@ -63,24 +62,24 @@ Failure Classification
       ↓
 AI Decision Engine
       ↓
-Deterministic Safety Gate
+Safety Gate
       ↓
-Execute / Schedule / Escalate
+Retry / Schedule / Escalate
       ↓
-PostgreSQL Audit Trail
+Audit Trail
       ↓
-Live Dashboard
+Dashboard
 ```
 
-The system supports five actions:
+Supported actions:
 
 | Action | Purpose |
 |---|---|
 | `retry_now` | Retry immediately |
-| `retry_in_24h` | Schedule a later retry |
-| `send_discount_offer` | Offer a controlled incentive |
-| `escalate_human` | Send to human support |
-| `give_up` | Stop recovery attempts |
+| `retry_in_24h` | Retry later |
+| `send_discount_offer` | Controlled incentive |
+| `escalate_human` | Human intervention |
+| `give_up` | Stop recovery |
 
 ---
 
@@ -88,331 +87,286 @@ The system supports five actions:
 
 ## AI proposes. Rules dispose.
 
-The AI recommends an action, but it cannot bypass deterministic financial safety rules.
+AI recommends the action, but deterministic rules control what is actually allowed.
 
 ```text
-                 AI
-                  ↓
-          Recommended Action
-                  ↓
-        ┌──────────────────┐
-        │   SAFETY GATE    │
-        │                  │
-        │ Max 3 attempts   │
-        │ Retryability     │
-        │ Discount ≤ 10%   │
-        └────────┬─────────┘
-                 ↓
-          Allowed Action
-                 ↓
-             Executor
+AI Recommendation
+        ↓
+   Safety Gate
+        ↓
+ ┌─────────────────┐
+ │ Max 3 attempts  │
+ │ Retryability    │
+ │ Discount ≤ 10% │
+ └────────┬────────┘
+          ↓
+     Allowed Action
 ```
 
-This gives Shimmer the flexibility of AI while maintaining predictable financial controls.
+If AI is unavailable, Shimmer uses deterministic fallback policies.
 
 ---
 
 # 🔍 Failure Intelligence
 
-Shimmer normalizes payment failures into actionable categories:
-
-| Failure | Retryable | Typical Response |
+| Failure | Retryable | Response |
 |---|---:|---|
 | `insufficient_funds` | ✅ | Retry later |
 | `bank_declined` | ✅ | Controlled retry |
-| `card_expired` | ❌ | Human escalation |
-| `invalid_card` | ❌ | Human escalation |
-| `unknown` | Controlled | Deterministic fallback |
+| `card_expired` | ❌ | Escalate |
+| `invalid_card` | ❌ | Escalate |
+| `unknown` | Controlled | Fallback policy |
 
 ---
 
-# 🛡️ Safety Gates
-
-Financial automation should never allow an LLM to make unrestricted payment decisions.
+# 🛡️ Safety & Explainability
 
 Shimmer enforces:
 
-### Maximum retry attempts
+- Maximum **3 attempts**
+- Non-retryable failures cannot be retried
+- Maximum discount of **10%**
+- Deterministic fallback when AI is unavailable
+- Webhook signature verification
+- Duplicate-event protection
 
-```text
-Maximum attempts = 3
-```
-
-### Non-retryable failures
-
-```text
-card_expired → retry blocked
-invalid_card → retry blocked
-```
-
-### Discount protection
-
-```text
-Maximum discount = 10%
-```
-
-If an AI recommendation violates a safety rule, the rule wins.
-
----
-
-# 🔎 "Why Did You NOT Retry?"
-
-Shimmer doesn't only explain successful decisions.
-
-It also explains **blocked decisions**.
-
-For every recovery event, the system records:
+The audit trail records:
 
 - Failure reason
 - Selected action
 - AI reasoning
 - Attempt number
 - Outcome
-- Ruled-out alternatives
-- Safety-gate information
+- Retry status
+- Recovery amount
 - Intervention cost
 - Timestamp
 
 Example:
 
 ```text
-Customer: cust_7
-
-Failure: card_expired
-
-Retry: BLOCKED
-
-Reason:
-card_expired is non-retryable.
-
-Next action:
-Human escalation
+card_expired
+     ↓
+Non-retryable
+     ↓
+Retry BLOCKED
+     ↓
+Human Escalation
 ```
 
-This makes the recovery agent **auditable and explainable** rather than a black box.
+This lets the system explain not only **what it did**, but also **why it did not retry**.
 
 ---
 
 # 💰 Recovery Economics
 
-Shimmer measures financial value, not just the number of successful retries.
+Shimmer measures business value:
 
 ```text
 Net Value Created
 =
-Gross Recovered Revenue
+Recovered Revenue
 -
-Intervention Costs
+Intervention Cost
 ```
 
 Tracked metrics include:
 
 - Revenue at risk
 - Revenue recovered
-- Customer recovery rate
-- Revenue recovery rate
-- Agent intervention cost
-- Discount cost
-- Human escalation cost
+- Recovery rate
+- Agent cost
 - Net value created
-- ROI
-- Average attempts to recovery
+- Average attempts
 
 ---
 
 # 📊 Current Demo Results
 
-The current 40-customer demonstration produced:
-
 | Metric | Result |
 |---|---:|
 | Customers processed | **40** |
-| Recovered customers | **20** |
+| Recovered | **20** |
 | Escalated / stopped | **20** |
-| Pending | **0** |
 | Revenue at risk | **₹27,960** |
 | Revenue recovered | **₹13,980** |
-| Customer recovery rate | **50%** |
-| Revenue recovery rate | **50%** |
+| Recovery rate | **50%** |
 | Agent cost | **₹7** |
 | Net value created | **₹13,973** |
 | Average attempts | **2** |
 
-### Demo outcome
+> Current recovery outcomes and intervention costs are simulated for safe, reproducible demonstrations.
+
+---
+
+# 💳 Razorpay Test Mode
+
+Shimmer is connected to Razorpay Test Mode for genuine payment-provider testing.
 
 ```text
-₹27,960 Revenue at Risk
-          ↓
-₹13,980 Revenue Recovered
-          ↓
-₹7 Agent Cost
-          ↓
-₹13,973 Net Value Created
+Test Payment Page
+       ↓
+Razorpay Checkout
+       ↓
+payment.failed / payment.captured
+       ↓
+Shimmer Webhook
+       ↓
+Recovery Engine
+       ↓
+PostgreSQL
+       ↓
+Dashboard
 ```
 
-> The current executor uses simulated payment outcomes and simulated intervention costs for safe, reproducible buildathon demonstrations.
+### Test Payment
+
+```text
+/test-payment
+```
+
+### Create Test Order
+
+```text
+POST /create-test-order
+```
+
+The server creates the Razorpay Test Mode Order before opening Checkout.
+
+No real money is charged.
+
+---
+
+# 🔐 Webhook Security & Idempotency
+
+Razorpay webhooks are verified using **HMAC SHA-256**.
+
+Duplicate events are prevented using the Razorpay event ID:
+
+```text
+x-razorpay-event-id
+```
+
+stored as:
+
+```text
+razorpay_event_id
+```
+
+The database uses:
+
+```sql
+INSERT ... ON CONFLICT DO NOTHING
+```
+
+to safely handle repeated or concurrent webhook deliveries.
 
 ---
 
 # 🖥️ Dashboard
 
-The Shimmer dashboard provides a near-real-time operational view of the recovery engine.
-
-It includes:
-
-### Executive KPIs
+The dashboard provides a near-real-time view of:
 
 - Revenue at Risk
 - Revenue Recovered
 - Recovery Rate
-- Net Value Created
+- Recovery Funnel
+- Failure Intelligence
+- Agent Decisions
+- Recovery Outcomes
+- Live Recovery Activity
+- Customer Ledger
+- Audit Trail
+- AI Audit Assistant
 
-### Recovery Intelligence
+The dashboard polls the backend approximately every **6 seconds**.
 
-- Revenue recovery funnel
-- Failure-reason breakdown
-- Agent decision distribution
-- Recovery outcomes
-
-### Operations
-
-- Live recovery activity
-- Customer recovery ledger
-- Customer search
-
-### Explainability
-
-- Complete customer audit trail
-- Safety-gate breakdown
-- "Why NOT Retry?" analysis
-
-### AI Assistant
-
-Natural-language questions over the audit trail, such as:
+Example AI audit questions:
 
 ```text
-Why was cust_1 not retried?
-
-Why did we give up on cust_7?
-
-Summarize recent recovery performance.
+Why was cust_1001 not retried?
 ```
 
-The dashboard polls the backend approximately every **6 seconds**, providing near-real-time monitoring.
+```text
+Which failure reason caused the most losses?
+```
+
+```text
+Summarize recent recovery performance.
+```
 
 ---
 
 # 🏗️ Architecture
 
 ```text
-                    Payment Provider
-                          │
-                          ▼
-                  ┌───────────────┐
-                  │ Webhook       │
-                  │ Verification  │
-                  │ HMAC SHA-256  │
-                  └───────┬───────┘
-                          ▼
-                  ┌───────────────┐
-                  │ Idempotency   │
-                  │ Event ID      │
-                  └───────┬───────┘
-                          ▼
-                  ┌───────────────┐
-                  │ Classifier    │
-                  └───────┬───────┘
-                          ▼
-                  ┌───────────────┐
-                  │ AI Decision   │
-                  │ Engine        │
-                  └───────┬───────┘
-                          ▼
-                  ┌───────────────┐
-                  │ Safety Gate   │
-                  └───────┬───────┘
-                          ▼
-              ┌───────────┼────────────┐
-              ▼           ▼            ▼
-           Retry       Discount     Escalate
+                    RAZORPAY
+                       │
+                       ▼
+                Test Checkout
+                       │
+                       ▼
+                Razorpay Webhook
+                       │
+                       ▼
+              HMAC Verification
+                       │
+                       ▼
+                Idempotency
+                       │
+                       ▼
+                  Classifier
+                       │
+                       ▼
+               AI Decision Engine
+                       │
+                       ▼
+                Safety Gate
+                       │
+              ┌────────┼────────┐
+              ▼        ▼        ▼
+            Retry   Discount  Escalate
               │
               ▼
-        Payment Executor
-        Test Simulator
+        Recovery Executor
               │
               ▼
           PostgreSQL
           Audit Trail
               │
               ▼
-       Shimmer Dashboard
+          Dashboard
 ```
 
 ---
 
-# 🔄 Example Recovery Flow
+# 🔄 Example Recovery
 
-### Recoverable payment
+### Recoverable
 
 ```text
 insufficient_funds
-        ↓
-Retryable
-        ↓
-AI → retry_in_24h
-        ↓
+       ↓
+retry_in_24h
+       ↓
 Safety Gate → ALLOWED
-        ↓
-Scheduled Retry
-        ↓
-Payment Recovered
-        ↓
-Audit + Metrics Updated
+       ↓
+Recovery
+       ↓
+Audit + Metrics
 ```
 
-### Non-retryable payment
+### Non-Retryable
 
 ```text
 card_expired
-        ↓
-Non-retryable
-        ↓
-AI recommendation checked
-        ↓
-Safety Gate → RETRY BLOCKED
-        ↓
+       ↓
+Retry BLOCKED
+       ↓
 Human Escalation
-        ↓
+       ↓
 Audit Trail
 ```
-
----
-
-# 🔐 Reliability & Safety
-
-### HMAC Verification
-
-Incoming webhook requests are verified using **HMAC SHA-256** before processing.
-
-### Idempotency
-
-`razorpay_event_id` prevents duplicate webhook processing.
-
-### Deterministic Fallback
-
-If the AI service is unavailable:
-
-```text
-AI unavailable
-      ↓
-Deterministic fallback
-      ↓
-Safety Gate
-      ↓
-Action
-```
-
-The safety layer remains active even when the LLM is unavailable.
 
 ---
 
@@ -420,7 +374,16 @@ The safety layer remains active even when the LLM is unavailable.
 
 Shimmer uses PostgreSQL.
 
-The `events` table stores the recovery audit trail, including:
+### Customers
+
+```text
+id
+email
+subscription_id
+amount
+```
+
+### Events
 
 ```text
 razorpay_event_id
@@ -433,19 +396,11 @@ outcome
 attempt_number
 amount_recovered
 retry_at
-processed
-created_at
 ruled_out_json
 intervention_cost
+processed
+created_at
 ```
-
-This provides the historical data required for:
-
-- Recovery metrics
-- Customer history
-- Auditability
-- AI audit queries
-- Financial analysis
 
 ---
 
@@ -453,32 +408,14 @@ This provides the historical data required for:
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| `POST` | `/webhook` | Receive payment failure events |
-| `GET` | `/metrics` | Recovery and financial metrics |
-| `GET` | `/customers` | Customer recovery states |
-| `GET` | `/audit/:id` | Customer audit history |
-| `POST` | `/query-audit` | Natural-language audit queries |
-| `POST` | `/reset-demo` | Reset demonstration data |
-
-### Example `/metrics`
-
-```json
-{
-  "total_customers": 40,
-  "recovered_count": 20,
-  "escalated_or_gave_up": 20,
-  "still_pending": 0,
-  "revenue_at_risk_inr": 27960,
-  "amount_recovered_inr": 13980,
-  "revenue_recovered_inr": 13980,
-  "recovery_rate_pct": 50,
-  "revenue_recovery_rate_pct": 50,
-  "total_agent_cost_inr": 7,
-  "net_recovered_inr": 13973,
-  "net_value_created_inr": 13973,
-  "avg_attempts_to_recovery": 2
-}
-```
+| `POST` | `/webhook` | Razorpay webhook |
+| `POST` | `/create-test-order` | Create Test Mode order |
+| `GET` | `/test-payment` | Test payment page |
+| `GET` | `/metrics` | Recovery metrics |
+| `GET` | `/customers` | Customer states |
+| `GET` | `/audit/:customerId` | Customer audit |
+| `POST` | `/query-audit` | AI audit queries |
+| `POST` | `/reset-demo` | Reset demo data |
 
 ---
 
@@ -486,12 +423,13 @@ This provides the historical data required for:
 
 | Layer | Technology |
 |---|---|
-| Backend | Node.js, Express.js |
+| Backend | Node.js + Express |
 | AI | Anthropic Claude |
+| Fallback | Deterministic Decision Engine |
 | Database | PostgreSQL |
 | Frontend | HTML, CSS, JavaScript |
 | Charts | Chart.js |
-| Payments | Razorpay webhook-compatible integration |
+| Payments | Razorpay Test Mode |
 | Security | HMAC SHA-256 |
 | Deployment | Render |
 
@@ -510,66 +448,61 @@ recovery-agent/
 ├── cron.js
 ├── metrics.js
 ├── db.js
+├── schema.sql
 ├── seed.js
 ├── package.json
+├── package-lock.json
 ├── README.md
 │
-├── public/
-│   └── dashboard.html
-│
-└── .gitignore
+└── public/
+    ├── dashboard.html
+    └── test-payment.html
 ```
 
 ---
+
 # 🌐 Deployment
 
-Shimmer is deployed on Render and can be accessed here:
+Shimmer is deployed on Render.
 
-**Live Application:** https://recovery-agent-go6k.onrender.com/
+**Live:**  
+https://recovery-agent-go6k.onrender.com/
 
-The deployed application includes:
+**Test Payment:**  
+https://recovery-agent-go6k.onrender.com/test-payment
 
-- AI-powered payment recovery decisions
-- Safety-gated action execution
-- PostgreSQL-backed audit trail
-- Recovery metrics
-- Customer ledger
-- AI audit assistant
-- Near-real-time dashboard updates
-
-### GitHub Repository
-
+**GitHub:**  
 https://github.com/Debasmita012/recovery-agent
 
-# ⚙️ Run Locally
+---
 
-### 1. Clone
+# ⚙️ Environment Variables
+
+```env
+PORT=3000
+
+DATABASE_URL=your_postgresql_connection_string
+
+ANTHROPIC_API_KEY=your_anthropic_api_key
+ANTHROPIC_MODEL=claude-sonnet-4-5
+
+RAZORPAY_KEY_ID=your_razorpay_test_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_test_key_secret
+RAZORPAY_WEBHOOK_SECRET=your_razorpay_webhook_secret
+
+PAYMENT_EXECUTION_MODE=demo
+```
+
+Never commit `.env` or expose API keys and secrets.
+
+---
+
+# 💻 Run Locally
 
 ```bash
 git clone https://github.com/Debasmita012/recovery-agent.git
 cd recovery-agent
-```
-
-### 2. Install
-
-```bash
 npm install
-```
-
-### 3. Configure environment variables
-
-Create `.env`:
-
-```env
-PORT=3000
-DATABASE_URL=your_postgresql_connection_string
-ANTHROPIC_API_KEY=your_anthropic_api_key
-RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
-```
-
-### 4. Start
-
-```bash
 npm start
 ```
 
@@ -579,49 +512,101 @@ Open:
 http://localhost:3000
 ```
 
+Test payment:
+
+```text
+http://localhost:3000/test-payment
+```
+
 ---
 
+# 🧪 Demo Flow
+
+```text
+Dashboard
+    ↓
+Run Razorpay Test Payment
+    ↓
+Create Test Order
+    ↓
+Razorpay Checkout
+    ↓
+Payment Failed
+    ↓
+payment.failed Webhook
+    ↓
+Classification
+    ↓
+AI Decision
+    ↓
+Safety Gate
+    ↓
+Recovery Action
+    ↓
+Audit Trail
+    ↓
+Dashboard Update
+```
+
+For a successful Test Mode payment:
+
+```text
+Razorpay Checkout
+       ↓
+payment.captured
+       ↓
+Recovered Revenue
+       ↓
+Audit Ledger
+       ↓
+Dashboard
+```
+
+---
 
 # ⚠️ Current Prototype Limitations
 
-Shimmer is currently a buildathon prototype.
+Shimmer is currently a controlled buildathon prototype.
 
-- The payment executor **simulates payment outcomes** rather than charging real customers.
-- Intervention costs are simulated for the demonstration.
-- Dashboard updates use 6-second polling rather than WebSockets.
-- AI availability depends on configured Anthropic credentials.
-- Deterministic fallback logic is used when AI is unavailable.
+- Recovery execution runs in **demo mode**
+- Recovery outcomes are simulated
+- Intervention costs are simulated
+- Razorpay integration uses **Test Mode**
+- No real customer money is charged
+- Automatic production payment retry is not currently enabled
+- Dashboard uses polling rather than WebSockets
+- Claude is optional because deterministic fallback is available
 
-These limitations keep the demonstration safe, deterministic, and reproducible.
+This keeps the demonstration safe and reproducible.
 
 ---
 
 # 🚀 Future Improvements
 
-Potential production extensions include:
-
-- Real payment execution with production safeguards
+- Production payment recovery execution
 - Predictive recovery probability
 - Adaptive retry timing
 - Customer lifetime-value-aware decisions
 - Multi-payment-method optimization
-- WebSocket/SSE dashboard updates
+- Real-time WebSocket dashboard
 - Recovery strategy A/B testing
-- Production human-support integrations
-- Advanced fraud/risk signals
+- Human-support integrations
+- Fraud and risk signals
 - AI decision-quality monitoring
+- Advanced customer segmentation
+- Cost-aware recovery optimization
 
 ---
 
 # 🏆 Why Shimmer?
 
-Traditional payment recovery focuses on:
+Traditional recovery asks:
 
-> **"Retry the payment."**
+> **"Should we retry?"**
 
-Shimmer focuses on:
+Shimmer asks:
 
-> **"Choose the safest and most economically valuable next action."**
+> **"What is the safest and most economically valuable next action?"**
 
 It combines:
 
@@ -630,14 +615,50 @@ AI Reasoning
      +
 Deterministic Safety
      +
-Automated Recovery
+Payment Events
+     +
+Recovery Automation
      +
 Explainable Auditing
      +
 Financial Measurement
 ```
 
-The result is an autonomous recovery system that can make decisions, execute permitted actions, explain blocked actions, and measure the value it creates.
+---
+
+# 📌 Project Summary
+
+Shimmer is an **AI-powered revenue recovery intelligence system** for Track 03 — AI Revenue Recovery.
+
+It:
+
+- Detects failed payments
+- Understands failure reasons
+- Recommends recovery actions
+- Applies financial safety rules
+- Prevents duplicate webhook processing
+- Records explainable decisions
+- Tracks recovered revenue
+- Measures recovery economics
+- Provides a live operational dashboard
+
+The current system uses genuine **Razorpay Test Mode** payment and webhook events together with controlled recovery execution.
+
+```text
+Detect
+  ↓
+Understand
+  ↓
+Decide
+  ↓
+Gate
+  ↓
+Recover
+  ↓
+Audit
+  ↓
+Measure
+```
 
 ---
 
