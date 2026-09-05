@@ -733,10 +733,18 @@ tbody tr:hover {
   </ul>
 
   <div class="nav-actions">
-    <button onclick="loadAll()">↻ Refresh</button>
-    <button class="btn-danger" onclick="resetDemo()">Reset Demo</button>
-  </div>
-</nav>
+  <button onclick="loadAll()">↻ Refresh</button>
+
+  <button
+    class="btn-primary"
+    onclick="window.location.href='/test-payment'">
+    ₹ Test Payment
+  </button>
+
+  <button class="btn-danger" onclick="resetDemo()">
+    Reset Demo
+  </button>
+</div>
 
 <!-- HERO -->
 <div class="hero-card">
@@ -755,11 +763,20 @@ tbody tr:hover {
       An autonomous financial decision engine that rescues failed subscription revenue using AI reasoning, deterministic safety gates, automated retry workflows and explainable audit trails.
     </p>
 
-    <button
-      class="btn-primary"
-      onclick="document.getElementById('ledger').scrollIntoView({behavior:'smooth'})">
-      Explore Recovery Ledger →
-    </button>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+
+  <button
+    class="btn-primary"
+    onclick="window.location.href='/test-payment'">
+    ₹ Run Razorpay Test Payment
+  </button>
+
+  <button
+    onclick="document.getElementById('ledger').scrollIntoView({behavior:'smooth'})">
+    Explore Recovery Ledger →
+  </button>
+
+</div>
 
   </div>
 
@@ -1023,7 +1040,7 @@ const money = n =>
   `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
 const paiseToInr = n =>
-  Number(n || 0) / 100;
+  Number(n || 0);
 
 const pretty = s =>
   String(s || '-').replaceAll('_',' ');
