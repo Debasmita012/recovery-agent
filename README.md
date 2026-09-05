@@ -644,5 +644,3 @@ The result is an autonomous recovery system that can make decisions, execute per
 # ✨ Shimmer
 
 ### **AI proposes. Rules dispose. Revenue recovers.**
-
-**Built for Razorpay Buildathon 2026 — AI Revenue Recovery**
