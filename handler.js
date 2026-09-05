@@ -65,28 +65,7 @@ const razorpaySubscriptionId =
     `${customerId}@example.com`;
 
 
-  // ---------------------------------------------------------
-  // Idempotency
-  // ---------------------------------------------------------
-
-  const existingEvent = await pool.query(
-    `SELECT id
-     FROM events
-     WHERE razorpay_event_id = $1`,
-    [razorpayEventId]
-  );
-
-  if (existingEvent.rows.length > 0) {
-    console.log(
-      `Skipping duplicate event ${razorpayEventId}`
-    );
-
-    return {
-      status: 'duplicate',
-      message: 'Event already processed',
-      eventId: razorpayEventId,
-    };
-  }
+  
 
 
   // ---------------------------------------------------------
@@ -113,6 +92,47 @@ const razorpaySubscriptionId =
       amount,
     ]
   );
+    // ---------------------------------------------------------
+  // Atomic idempotency claim
+  // ---------------------------------------------------------
+  //
+  // Razorpay may deliver the same webhook more than once.
+  // INSERT ... ON CONFLICT makes the event claim atomic,
+  // so the same event can never trigger recovery twice.
+  //
+
+  const claimResult = await pool.query(
+    `INSERT INTO events (
+      razorpay_event_id,
+      customer_id,
+      event_type,
+      processed
+    )
+    VALUES ($1, $2, $3, false)
+    ON CONFLICT (razorpay_event_id)
+    DO NOTHING
+    RETURNING id`,
+    [
+      razorpayEventId,
+      customerId,
+      eventType,
+    ]
+  );
+
+  if (claimResult.rows.length === 0) {
+    console.log(
+      `[idempotency] Skipping duplicate event ${razorpayEventId}`
+    );
+
+    return {
+      status: 'duplicate',
+      message: 'Event already processed',
+      eventId: razorpayEventId,
+    };
+  }
+
+  const claimedEventId =
+    claimResult.rows[0].id;
 
 
   // ---------------------------------------------------------
@@ -182,44 +202,25 @@ const decision = await decideAction({
 
 
   // ---------------------------------------------------------
-  // Audit log
+    // ---------------------------------------------------------
+  // Complete the claimed audit event
   // ---------------------------------------------------------
 
   await pool.query(
-    `INSERT INTO events (
-      razorpay_event_id,
-      customer_id,
-      event_type,
-      reason_code,
-      action_taken,
-      llm_reasoning,
-      outcome,
-      attempt_number,
-      amount_recovered,
-      retry_at,
-      processed,
-      ruled_out_json,
-      intervention_cost
-    )
-    VALUES (
-      $1,
-      $2,
-      $3,
-      $4,
-      $5,
-      $6,
-      $7,
-      $8,
-      $9,
-      $10,
-      $11,
-      $12,
-      $13
-    )`,
+    `UPDATE events
+     SET
+       reason_code = $1,
+       action_taken = $2,
+       llm_reasoning = $3,
+       outcome = $4,
+       attempt_number = $5,
+       amount_recovered = $6,
+       retry_at = $7,
+       processed = $8,
+       ruled_out_json = $9,
+       intervention_cost = $10
+     WHERE id = $11`,
     [
-      razorpayEventId,
-      customerId,
-      eventType,
       reason,
       decision.action,
       decision.reasoning || '',
@@ -236,6 +237,8 @@ const decision = await decideAction({
       ),
 
       result.interventionCost || 0,
+
+      claimedEventId,
     ]
   );
 
